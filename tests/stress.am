@@ -1,0 +1,24 @@
+# vim:ft=automake
+# Gearman server and library
+# Copyright (C) 2012 Data Differential, http://datadifferential.com/
+# All rights reserved.
+#
+# Use and distribution licensed under the BSD license.  See
+# the COPYING file in the parent directory for full text.
+#
+# Included from Top Level Makefile.am
+# All paths should be given relative to the root
+#
+
+tests_stress_CFLAGS=
+tests_stress_CXXFLAGS=
+tests_stress_LDADD=
+tests_stress_SOURCES=
+
+tests_stress_SOURCES+= tests/burnin.cc
+tests_stress_LDADD+= libgearman/libgearman.la
+tests_stress_LDADD+= libtest/libtest.la
+tests_stress_LDADD+= tests/libstartworker.la
+check_PROGRAMS+=tests/stress
+noinst_PROGRAMS+=tests/stress
+
