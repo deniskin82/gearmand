@@ -96,7 +96,7 @@ static bool _set_fdlimit(rlim_t fds);
 static bool _switch_user(const char *user);
 
 extern "C" {
-static bool _set_signals(void);
+static bool _set_signals(bool core_dump= false);
 }
 
 static void _log(const char *line, gearmand_verbose_t verbose, void *context);
@@ -126,7 +126,12 @@ int main(int argc, char *argv[])
   bool opt_daemon;
   bool opt_check_args;
   bool opt_syslog;
+  bool opt_coredump;
   uint32_t hashtable_buckets;
+  bool opt_keepalive;
+  int opt_keepalive_idle;
+  int opt_keepalive_interval;
+  int opt_keepalive_count;
 
   boost::program_options::options_description general("General options");
 
@@ -151,8 +156,20 @@ int main(int argc, char *argv[])
   ("job-handle-prefix", boost::program_options::value(&job_handle_prefix),
    "Prefix used to generate a job handle string. If not provided, the default \"H:<host_name>\" is used.")
 
-  ("hashtable-buckets", boost::program_options::value(&hashtable_buckets)->default_value(GEARMAND_JOB_DEFAULT_HASH_SIZE),
-   "Number of buckets in the internal job hash tables. The default of 383 works well for about a million jobs in queue. If the number of jobs in the queue at any time will exceed a million, use proportionally larger values (383 * # of jobs / 1M). For example, to accomodate 2^32 jobs, use 1733003. This will consume ~26MB of extra memory. Gearmand cannot support more than 2^32 jobs in queue at this time.")
+  ("hashtable-buckets", boost::program_options::value(&hashtable_buckets)->default_value(GEARMAND_DEFAULT_HASH_SIZE),
+   "Number of buckets in the internal job hash tables. The default of 991 works well for about three million jobs in queue. If the number of jobs in the queue at any time will exceed three million, use proportionally larger values (991 * # of jobs / 3M). For example, to accomodate 2^32 jobs, use 1733003. This will consume ~26MB of extra memory. Gearmand cannot support more than 2^32 jobs in queue at this time.")
+
+  ("keepalive", boost::program_options::bool_switch(&opt_keepalive)->default_value(false),
+   "Enable keepalive on sockets.")
+
+  ("keepalive-idle", boost::program_options::value(&opt_keepalive_idle)->default_value(-1),
+   "If keepalive is enabled, set the value for TCP_KEEPIDLE for systems that support it. A value of -1 means that either the system does not support it or an error occurred when trying to retrieve the default value.")
+
+  ("keepalive-interval", boost::program_options::value(&opt_keepalive_interval)->default_value(-1),
+   "If keepalive is enabled, set the value for TCP_KEEPINTVL for systems that support it. A value of -1 means that either the system does not support it or an error occurred when trying to retrieve the default value.")
+
+  ("keepalive-count", boost::program_options::value(&opt_keepalive_count)->default_value(-1),
+   "If keepalive is enabled, set the value for TCP_KEEPCNT for systems that support it. A value of -1 means that either the system does not support it or an error occurred when trying to retrieve the default value.")
 
   ("log-file,l", boost::program_options::value(&log_file)->default_value(LOCALSTATEDIR"/log/gearmand.log"),
    "Log file to write errors and information to. If the log-file parameter is specified as 'stderr', then output will go to stderr. If 'none', then no logfile will be generated.")
@@ -177,6 +194,9 @@ int main(int argc, char *argv[])
 
   ("syslog", boost::program_options::bool_switch(&opt_syslog)->default_value(false),
    "Use syslog.")
+
+  ("coredump", boost::program_options::bool_switch(&opt_coredump)->default_value(false),
+   "Whether to create a core dump for uncaught signals.")
 
   ("threads,t", boost::program_options::value(&threads)->default_value(4),
    "Number of I/O threads to use, 0 means that gearmand will try to guess the maximum number it can use. Default=4.")
@@ -312,7 +332,7 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  if (fds > 0 && _set_fdlimit(fds))
+  if (fds > 0 and _set_fdlimit(fds))
   {
     return EXIT_FAILURE;
   }
@@ -327,7 +347,7 @@ int main(int argc, char *argv[])
     util::daemonize(false, true);
   }
 
-  if (_set_signals())
+  if (_set_signals(opt_coredump))
   {
     return EXIT_FAILURE;
   }
@@ -357,7 +377,18 @@ int main(int argc, char *argv[])
     }
   }
 
-  gearmand_st *_gearmand= gearmand_create(host.empty() ? NULL : host.c_str(),
+  gearmand_config_st *gearmand_config= gearmand_config_create();
+
+  if (gearmand_config == NULL)
+  {
+    return EXIT_FAILURE;
+  }
+
+  gearmand_config_sockopt_keepalive(gearmand_config, opt_keepalive);
+
+
+  gearmand_st *_gearmand= gearmand_create(gearmand_config,
+                                          host.empty() ? NULL : host.c_str(),
                                           threads, backlog,
                                           static_cast<uint8_t>(job_retries),
                                           job_handle_prefix.empty() ? NULL : job_handle_prefix.c_str(),
@@ -371,11 +402,13 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  gearmand_config_free(gearmand_config);
+
   assert(queue_type.size());
   if (queue_type.empty() == false)
   {
     gearmand_error_t rc;
-    if ((rc= gearmand::queue::initialize(_gearmand, queue_type.c_str())) != GEARMAN_SUCCESS)
+    if ((rc= gearmand::queue::initialize(_gearmand, queue_type.c_str())) != GEARMAND_SUCCESS)
     {
       error::message("Error while initializing the queue", queue_type.c_str());
       gearmand_free(_gearmand);
@@ -384,7 +417,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (gear.start(_gearmand) != GEARMAN_SUCCESS)
+  if (gear.start(_gearmand) != GEARMAND_SUCCESS)
   {
     error::message("Error while enabling Gear protocol module");
     gearmand_free(_gearmand);
@@ -394,7 +427,7 @@ int main(int argc, char *argv[])
 
   if (protocol.compare("http") == 0)
   {
-    if (http.start(_gearmand) != GEARMAN_SUCCESS)
+    if (http.start(_gearmand) != GEARMAND_SUCCESS)
     {
       error::message("Error while enabling protocol module", protocol.c_str());
       gearmand_free(_gearmand);
@@ -423,7 +456,7 @@ int main(int argc, char *argv[])
   gearmand_free(_gearmand);
   _gearmand= NULL;
 
-  return (ret == GEARMAN_SUCCESS || ret == GEARMAN_SHUTDOWN) ? 0 : 1;
+  return (ret == GEARMAND_SUCCESS || ret == GEARMAND_SHUTDOWN) ? 0 : 1;
 }
 
 static bool _set_fdlimit(rlim_t fds)
@@ -517,7 +550,7 @@ extern "C" void _crash_handler(int signal_, siginfo_t*, void*)
 }
 
 extern "C" {
-static bool _set_signals(void)
+static bool _set_signals(bool core_dump)
 {
   struct sigaction sa;
 
@@ -560,7 +593,7 @@ static bool _set_signals(void)
 
   bool in_gdb_libtest= bool(getenv("LIBTEST_IN_GDB"));
 
-  if (in_gdb_libtest == false)
+  if ((in_gdb_libtest == false) and (core_dump == false))
   {
     sa.sa_sigaction= _crash_handler;
     if (sigaction(SIGSEGV, &sa, NULL) == -1)
@@ -584,13 +617,13 @@ static bool _set_signals(void)
 #endif
     if (sigaction(SIGILL, &sa, NULL) == -1)
     {
-      error::perror("Could not set SIGBUS handler.");
+      error::perror("Could not set SIGILL handler.");
       return true;
     }
 
     if (sigaction(SIGFPE, &sa, NULL) == -1)
     {
-      error::perror("Could not set SIGBUS handler.");
+      error::perror("Could not set SIGFPE handler.");
       return true;
     }
   }

@@ -43,7 +43,9 @@
 
 #include <libtest/test.hpp>
 
-#include "tests/worker.h"
+#include "libgearman/client.hpp"
+#include "libgearman/worker.hpp"
+using namespace org::gearmand;
 
 #include <fstream>
 
@@ -103,6 +105,14 @@ static test_return_t long_daemon_test(void *)
   return TEST_SUCCESS;
 }
 
+static test_return_t long_coredump_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--coredump", 0 };
+
+  ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
 static test_return_t short_daemon_test(void *)
 {
   const char *args[]= { "--check-args", "-d", 0 };
@@ -140,6 +150,66 @@ static test_return_t short_help_test(void *)
   const char *args[]= { "--check-args", "-h", 0 };
 
   ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t long_keepalive_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--keepalive", 0 };
+
+  ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t long_keepalive_idle_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--keepalive-idle=10", 0 };
+
+  ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t long_keepalive_interval_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--keepalive-interval=3", 0 };
+
+  ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t long_keepalive_count_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--keepalive-count=10", 0 };
+
+  ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t long_keepalive_start_TEST(void *)
+{
+  in_port_t port= libtest::get_free_port();
+  char port_str[1024];
+  test_true(snprintf(port_str, sizeof(port_str), "--port=%d", int32_t(port)) > 0);
+
+  const char *args[]= {
+    port_str,
+    "--check-args",
+    "--log-file=stderr",
+    "--keepalive-count=10", 
+    "--keepalive-interval=3",
+    "--keepalive-idle=10", 0 };
+
+  Application app(gearmand_binary(), true);
+
+  Application::error_t ret= app.run(args);
+
+  ASSERT_EQ(Application::SUCCESS, ret);
+
+  ret= app.join();
+  ASSERT_EQ_(Application::SUCCESS, ret, "ret: %s stderr: '%s' stdout: `%s'",
+             Application::toString(ret),
+             app.stderr_c_str(), app.stdout_c_str());
+
   return TEST_SUCCESS;
 }
 
@@ -538,12 +608,17 @@ test_st gearmand_option_tests[] ={
   {"--check-args", 0, check_args_test},
   {"--backlog=", 0, long_backlog_test},
   {"-b", 0, short_backlog_test},
+  {"--coredump", 0, long_coredump_TEST},
   {"--daemon", 0, long_daemon_test},
   {"-d", 0, short_daemon_test},
   {"--file-descriptors=", 0, long_file_descriptors_test},
   {"-f", 0, short_file_descriptors_test},
   {"--help", 0, long_help_test},
   {"-h", 0, short_help_test},
+  {"--keepalive", 0, long_keepalive_TEST},
+  {"--keepalive-idle", 0, long_keepalive_idle_TEST},
+  {"--keepalive-interval", 0, long_keepalive_interval_TEST},
+  {"--keepalive-count", 0, long_keepalive_count_TEST},
   {"--log-file=", 0, long_log_file_test},
   {"--log-file=stderr", 0, long_log_file_stderr_TEST},
   {"-l", 0, short_log_file_test},
@@ -586,6 +661,7 @@ test_st gearmand_option_tests[] ={
   {"--config-file", 0, config_file_DEFAULT_TEST },
   {"--config-file=etc/grmandfoo.conf", 0, config_file_FAIL_TEST },
   {"--config-file=etc/gearmand.conf", 0, config_file_SIMPLE_TEST },
+  {"start server with all --keepalive options", 0, long_keepalive_start_TEST},
   {0, 0, 0}
 };
 

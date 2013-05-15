@@ -151,6 +151,11 @@ public:
     return _stdout_buffer.size();
   }
 
+  const char* stdout_c_str() const
+  {
+    return &_stdout_buffer[0];
+  }
+
   libtest::vchar_t stderr_result() const
   {
     return _stderr_buffer;
@@ -240,8 +245,5 @@ static inline std::ostream& operator<<(std::ostream& output, const enum Applicat
 }
 
 int exec_cmdline(const std::string& executable, const char *args[], bool use_libtool= false);
-
-const char *gearmand_binary(); 
-const char *drizzled_binary();
 
 }

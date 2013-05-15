@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2010-2013 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #include "gear_config.h"
@@ -22,19 +52,38 @@ using namespace libtest;
 #include <libtest/test.hpp>
 
 #include "libgearman/interface/task.hpp"
-#include "tests/client.h"
+#include "libgearman/client.hpp"
+using namespace org::gearmand;
 
 #include <tests/start_worker.h>
 
 #define DEFAULT_WORKER_NAME "burnin"
 
-static gearman_return_t worker_fn(gearman_job_st*, void*)
+#define HARD_CODED_EXCEPTION "my test exception"
+
+__thread int count= 0;
+
+static gearman_return_t worker_fn(gearman_job_st* job, void*)
 {
+  if (random() % 10)
+  {
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer), "%.*s:%d", test_literal_printf_param(HARD_CODED_EXCEPTION), count++);
+    gearman_return_t ret= gearman_job_send_exception(job, test_literal_param(HARD_CODED_EXCEPTION));
+    if (gearman_failed(ret))
+    {
+      Error << "gearman_job_send_exception(" << gearman_strerror(ret) << ")";
+      return GEARMAN_WORK_ERROR;
+    }
+
+    return GEARMAN_WORK_FAIL;
+  }
+
   return GEARMAN_SUCCESS;
 }
 
 struct client_test_st {
-  test::Client _client;
+  libgearman::Client _client;
   worker_handle_st *handle;
 
   client_test_st():
@@ -149,11 +198,40 @@ static test_return_t burnin_TEST(void*)
     }
 
     gearman_return_t ret= gearman_client_run_tasks(client);
-    for (uint32_t x= 0; x < context->num_tasks; x++)
-    {
-      ASSERT_EQ(GEARMAN_TASK_STATE_FINISHED, tasks[x].impl()->state);
-      ASSERT_EQ(GEARMAN_SUCCESS, tasks[x].impl()->result_rc);
-    }
+
+    do {
+      for (uint32_t x= 0; x < context->num_tasks; x++)
+      {
+        ASSERT_EQ(GEARMAN_TASK_STATE_FINISHED, tasks[x].impl()->state);
+        if (tasks[x].impl()->result_rc == GEARMAN_UNKNOWN_STATE)
+        {
+          gearman_client_wait(client);
+        }
+        else if (tasks[x].impl()->result_rc == GEARMAN_WORK_FAIL)
+        {
+          if (gearman_task_has_exception(&tasks[x]))
+          {
+            ASSERT_TRUE(gearman_task_has_exception(&tasks[x]));
+            gearman_string_t exception_string= gearman_task_exception(&tasks[x]);
+            test_strcmp(HARD_CODED_EXCEPTION, gearman_c_str(exception_string));
+          }
+          else
+          {
+#if 0
+            Error << "error was " << gearman_task_error(&tasks[x]);
+#endif
+          }
+        }
+        else if (tasks[x].impl()->result_rc != GEARMAN_SUCCESS)
+        {
+          ASSERT_EQ(GEARMAN_SUCCESS, tasks[x].impl()->result_rc);
+        }
+        else
+        {
+          ASSERT_EQ(GEARMAN_SUCCESS, tasks[x].impl()->result_rc);
+        }
+      }
+    } while (client->impl()->new_tasks);
     test_zero(client->impl()->new_tasks);
 
     ASSERT_EQ(ret, GEARMAN_SUCCESS);

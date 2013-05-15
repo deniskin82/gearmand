@@ -46,15 +46,16 @@ struct gearman_connection_st
 {
   struct Options {
     bool server_options_sent;
+    bool identifier_sent;
     bool ready;
     bool packet_in_use;
 
     Options() :
       server_options_sent(false),
+      identifier_sent(false),
       ready(false),
       packet_in_use(false)
     { }
-
   } options;
   enum gearman_con_universal_t state;
   enum gearman_con_send_t send_state;
@@ -94,7 +95,7 @@ public:
 
   ~gearman_connection_st();
 
-  void set_host( const char *host, const in_port_t port);
+  void set_host( const char *host, const in_port_t& port);
   void set_host( const char *host, const char* service);
 
   gearman_return_t send_packet(const gearman_packet_st&, const bool flush_buffer);
@@ -132,11 +133,16 @@ public:
     _recv_packet= NULL;
   }
 
+  gearman_connection_st(const gearman_connection_st&);
+
+  gearman_return_t send_identifier(void);
+
 private:
   gearman_return_t _send_packet(const gearman_packet_st&, const bool flush_buffer);
   gearman_return_t set_socket_options();
   size_t recv_socket(void *data, size_t data_size, gearman_return_t&);
   gearman_return_t connect_poll();
+
   gearman_packet_st *_recv_packet;
 };
 

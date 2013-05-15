@@ -2,8 +2,8 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Copyright (C) 2012-2013 Data Differential, http://datadifferential.com/ All
+ *  rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -39,6 +39,8 @@
 
 #include "libgearman-server/common.h"
 #include "libgearman-server/log.h"
+#include "libgearman/command.h"
+#include "libgearman/vector.hpp"
 
 #include <cassert>
 #include <cerrno>
@@ -49,33 +51,35 @@
 #define TEXT_ERROR_CREATE_FUNCTION "ERR CREATE_FUNCTION %.*s\r\n"
 #define TEXT_ERROR_UNKNOWN_COMMAND "ERR UNKNOWN_COMMAND Unknown+server+command%.*s\r\n"
 #define TEXT_ERROR_INTERNAL_ERROR "ERR UNKNOWN_ERROR\r\n"
+#define TEXT_ERROR_UNKNOWN_SHOW_ARGUMENTS "ERR UNKNOWN_SHOW_ARGUMENTS\r\n"
+#define TEXT_ERROR_UNKNOWN_JOB "ERR UNKNOWN_JOB\r\n"
 
 gearmand_error_t server_run_text(gearman_server_con_st *server_con,
                                  gearmand_packet_st *packet)
 {
-  size_t total;
-
-  char *data= (char *)malloc(GEARMAN_TEXT_RESPONSE_SIZE);
-  if (data == NULL)
-  {
-    return gearmand_perror(errno, "malloc");
-  }
-  total= GEARMAN_TEXT_RESPONSE_SIZE;
-  data[0]= 0;
+  gearman_vector_st data(GEARMAND_TEXT_RESPONSE_SIZE);
 
   if (packet->argc)
   {
-    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "text command %.*s", packet->arg_size[0],  packet->arg[0]);
+    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "text command %.*s %d arguments",
+                       packet->arg_size[0],  packet->arg[0],
+                       int(packet->argc));
   }
 
+#if 0
+  const struct gearman_command_info_st *command= NULL;
+#endif
   if (packet->argc == 0)
   {
-    snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_UNKNOWN_COMMAND, 4, "NULL");
+    data.vec_printf(TEXT_ERROR_UNKNOWN_COMMAND, 4, "NULL");
   }
+#if 0
+  else if ((command= gearman_command_lookup((char *)(packet->arg[0]), packet->arg_size[0])))
+  {
+  }
+#endif
   else if (strcasecmp("workers", (char *)(packet->arg[0])) == 0)
   {
-    size_t size= 0;
-
     for (gearman_server_thread_st *thread= Server->thread_list;
          thread != NULL;
          thread= thread->next)
@@ -90,88 +94,16 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
             continue;
           }
 
-          if (size > total)
-          {
-            size= total;
-          }
-
-          /* Make sure we have at least GEARMAN_TEXT_RESPONSE_SIZE bytes. */
-          if (size + GEARMAN_TEXT_RESPONSE_SIZE > total)
-          {
-            char *new_data= (char *)realloc(data, total + GEARMAN_TEXT_RESPONSE_SIZE);
-            if (new_data == NULL)
-            {
-              if ((error= pthread_mutex_unlock(&(thread->lock))))
-              {
-                gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
-              }
-              free(data);
-              return gearmand_perror(ENOMEM, "realloc");
-            }
-
-            data= new_data;
-            total+= GEARMAN_TEXT_RESPONSE_SIZE;
-          }
-
-          int sn_checked_length= snprintf(data + size, total - size, "%d %s %s :",
-                                          con->con.fd, con->_host, con->id);
-
-          if ((size_t)sn_checked_length > total - size || sn_checked_length < 0)
-          {
-            if ((error= pthread_mutex_unlock(&(thread->lock))))
-            {
-              gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
-            }
-
-            free(data);
-            return gearmand_perror(ENOMEM, "snprintf");
-          }
-
-          size+= (size_t)sn_checked_length;
-          if (size > total)
-          {
-            continue;
-          }
+          data.vec_append_printf("%d %s %s :", con->con.fd, con->_host, con->id);
 
           for (gearman_server_worker_st *worker= con->worker_list; worker != NULL; worker= worker->con_next)
           {
-            int checked_length= snprintf(data + size, total - size, " %.*s",
-                                     (int)(worker->function->function_name_size),
-                                     worker->function->function_name);
-
-            if ((size_t)checked_length > total - size || checked_length < 0)
-            {
-              if ((error= (pthread_mutex_unlock(&(thread->lock)))))
-              {
-                gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
-              }
-
-              free(data);
-              return gearmand_perror(ENOMEM, "snprintf");
-            }
-
-            size+= (size_t)checked_length;
-            if (size > total)
-              break;
+            data.vec_append_printf(" %.*s",
+                                   (int)(worker->function->function_name_size),
+                                   worker->function->function_name);
           }
 
-          if (size > total)
-          {
-            continue;
-          }
-
-          int checked_length= snprintf(data + size, total - size, "\n");
-          if ((size_t)checked_length > total - size || checked_length < 0)
-          {
-            if ((error= (pthread_mutex_unlock(&(thread->lock)))))
-            {
-              gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
-            }
-
-            free(data);
-            return gearmand_perror(ENOMEM, "snprintf");
-          }
-          size+= (size_t)checked_length;
+          data.vec_append_printf("\n");
         }
 
         if ((error= (pthread_mutex_unlock(&(thread->lock)))) != 0)
@@ -185,127 +117,150 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
       }
     }
 
-    if (size < total)
-    {
-      int checked_length= snprintf(data + size, total - size, ".\n");
-      if ((size_t)checked_length > total - size || checked_length < 0)
-      {
-        return gearmand_perror(ENOMEM, "snprintf");
-      }
-    }
+    data.vec_append_printf(".\n");
   }
   else if (strcasecmp("status", (char *)(packet->arg[0])) == 0)
   {
-    size_t size= 0;
-
-    gearman_server_function_st *function;
-    for (function= Server->function_list; function != NULL;
-         function= function->next)
+    for (uint32_t function_key= 0;
+         function_key < GEARMAND_DEFAULT_HASH_SIZE;
+         function_key++)
     {
-      if (size + GEARMAN_TEXT_RESPONSE_SIZE > total)
+      for (gearman_server_function_st *function= Server->function_hash[function_key];
+           function != NULL;
+           function= function->next)
       {
-        char *new_data= (char *)realloc(data, total + GEARMAN_TEXT_RESPONSE_SIZE);
-        if (new_data == NULL)
-        {
-          free(data);
-          return gearmand_perror(errno, "realloc");
-        }
-
-        data= new_data;
-        total+= GEARMAN_TEXT_RESPONSE_SIZE;
-      }
-
-      int checked_length= snprintf(data + size, total - size, "%.*s\t%u\t%u\t%u\n",
-                                   (int)(function->function_name_size),
-                                   function->function_name, function->job_total,
-                                   function->job_running, function->worker_count);
-
-      if ((size_t)checked_length > total - size || checked_length < 0)
-      {
-        free(data);
-        return gearmand_perror(ENOMEM, "snprintf");
-      }
-
-      size+= (size_t)checked_length;
-      if (size > total)
-      {
-        size= total;
+        data.vec_append_printf("%.*s\t%u\t%u\t%u\n",
+                               int(function->function_name_size),
+                               function->function_name, function->job_total,
+                               function->job_running, function->worker_count);
       }
     }
 
-    if (size < total)
+    data.vec_append_printf(".\n");
+  }
+  else if (packet->argc >= 3 
+           and strcasecmp("cancel", (char *)(packet->arg[0])) == 0)
+  {
+    if (packet->argc == 3
+        and strcasecmp("job", (char *)(packet->arg[1])) == 0)
     {
-      int checked_length= snprintf(data + size, total - size, ".\n");
-      if ((size_t)checked_length > total - size || checked_length < 0)
+      if (gearman_server_job_cancel(Gearmand()->server, packet->arg[2], strlen(packet->arg[2])))
       {
-        free(data);
-        return gearmand_perror(ENOMEM, "snprintf");
+        data.vec_printf(TEXT_SUCCESS);
       }
+      else
+      {
+        data.vec_printf(TEXT_ERROR_UNKNOWN_JOB);
+      }
+    }
+  }
+  else if (packet->argc >= 2 and strcasecmp("show", (char *)(packet->arg[0])) == 0)
+  {
+    if (packet->argc == 3
+        and strcasecmp("unique", (char *)(packet->arg[1])) == 0
+        and strcasecmp("jobs", (char *)(packet->arg[2])) == 0)
+    {
+      for (size_t x= 0; x < Server->hashtable_buckets; x++)
+      {
+        for (gearman_server_job_st* server_job= Server->unique_hash[x];
+             server_job != NULL;
+             server_job= server_job->unique_next)
+        {
+          data.vec_append_printf("%.*s\n", int(server_job->unique_length), server_job->unique);
+        }
+      }
+
+      data.vec_append_printf(".\n");
+    }
+    else if (packet->argc == 2
+             and strcasecmp("jobs", (char *)(packet->arg[1])) == 0)
+    {
+      for (size_t x= 0; x < Server->hashtable_buckets; ++x)
+      {
+        for (gearman_server_job_st *server_job= Server->job_hash[x];
+             server_job != NULL;
+             server_job= server_job->next)
+        {
+          data.vec_append_printf("%s\t%u\t%u\t%u\n", server_job->job_handle, uint32_t(server_job->retries),
+                                 uint32_t(server_job->ignore_job), uint32_t(server_job->job_queued));
+        }
+      }
+
+      data.vec_append_printf(".\n");
+    }
+    else
+    {
+      data.vec_printf(TEXT_ERROR_UNKNOWN_SHOW_ARGUMENTS);
     }
   }
   else if (strcasecmp("create", (char *)(packet->arg[0])) == 0)
   {
-    if (packet->argc == 3 && !strcasecmp("function", (char *)(packet->arg[1])))
+    if (packet->argc == 3 and strcasecmp("function", (char *)(packet->arg[1])) == 0)
     {
-      gearman_server_function_st *function;
-      function= gearman_server_function_get(Server, (char *)(packet->arg[2]), packet->arg_size[2] -2);
+      gearman_server_function_st* function= gearman_server_function_get(Server, (char *)(packet->arg[2]), packet->arg_size[2] -2);
 
       if (function)
       {
-        snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_SUCCESS);
+        data.vec_printf(TEXT_SUCCESS);
       }
       else
       {
-        snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_CREATE_FUNCTION,
-                 (int)packet->arg_size[2], (char *)(packet->arg[2]));
+        data.vec_printf(TEXT_ERROR_CREATE_FUNCTION,
+                        (int)packet->arg_size[2], (char *)(packet->arg[2]));
       }
     }
     else
     {
       // create
-      snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
+      data.vec_printf(TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
     }
   }
   else if (strcasecmp("drop", (char *)(packet->arg[0])) == 0)
   {
-    if (packet->argc == 3 && !strcasecmp("function", (char *)(packet->arg[1])))
+    if (packet->argc == 3 and strcasecmp("function", (char *)(packet->arg[1])) == 0)
     {
       bool success= false;
-      for (gearman_server_function_st *function= Server->function_list; function != NULL; function= function->next)
+      for (uint32_t function_key= 0; function_key < GEARMAND_DEFAULT_HASH_SIZE;
+           function_key++)
       {
-        if (strcasecmp(function->function_name, (char *)(packet->arg[2])) == 0)
+        for (gearman_server_function_st *function= Server->function_hash[function_key];
+             function != NULL;
+             function= function->next)
         {
-          success= true;
-          if (function->worker_count == 0 && function->job_running == 0)
+          if (strcasecmp(function->function_name, (char *)(packet->arg[2])) == 0)
           {
-            gearman_server_function_free(Server, function);
-            snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_SUCCESS);
+            success= true;
+            if (function->worker_count == 0 && function->job_running == 0)
+            {
+              gearman_server_function_free(Server, function);
+              data.vec_append_printf(TEXT_SUCCESS);
+            }
+            else
+            {
+              data.vec_append_printf("ERR there are still connected workers or executing clients\r\n");
+            }
+            break;
           }
-          else
-          {
-            snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "ERR there are still connected workers or executing clients\r\n");
-          }
-          break;
         }
       }
 
       if (success == false)
       {
-        snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "ERR function not found\r\n");
-        gearmand_debug(data);
+        data.vec_printf("ERR function not found\r\n");
+        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "%s", data.value());
       }
     }
     else
     {
       // drop
-      snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
+      data.vec_printf(TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
     }
   }
   else if (strcasecmp("maxqueue", (char *)(packet->arg[0])) == 0)
   {
     if (packet->argc == 1)
     {
-      snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
+      data.vec_append_printf(TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
     }
     else
     {
@@ -328,7 +283,7 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
         }
         else
         {
-          max_queue_size[priority]= GEARMAN_DEFAULT_MAX_QUEUE_SIZE;
+          max_queue_size[priority]= GEARMAND_DEFAULT_MAX_QUEUE_SIZE;
         }
       }
 
@@ -344,84 +299,88 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
         }
       }
        
-      for (gearman_server_function_st *function= Server->function_list; function != NULL; function= function->next)
+      for (uint32_t function_key= 0; function_key < GEARMAND_DEFAULT_HASH_SIZE;
+           function_key++)
       {
-        if (strlen((char *)(packet->arg[1])) == function->function_name_size &&
-            (memcmp(packet->arg[1], function->function_name, function->function_name_size) == 0))
+        for (gearman_server_function_st *function= Server->function_hash[function_key];
+             function != NULL;
+             function= function->next)
         {
-          gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Applying queue limits to %s", function->function_name);
-          memcpy(function->max_queue_size, max_queue_size, sizeof(uint32_t) * GEARMAN_JOB_PRIORITY_MAX);
+          if (strlen((char *)(packet->arg[1])) == function->function_name_size &&
+              (memcmp(packet->arg[1], function->function_name, function->function_name_size) == 0))
+          {
+            gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Applying queue limits to %s", function->function_name);
+            memcpy(function->max_queue_size, max_queue_size, sizeof(uint32_t) * GEARMAN_JOB_PRIORITY_MAX);
+          }
         }
       }
 
-      snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_SUCCESS);
+      data.vec_append_printf(TEXT_SUCCESS);
     }
   }
   else if (strcasecmp("getpid", (char *)(packet->arg[0])) == 0)
   {
-    snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "OK %d\n", (int)getpid());
+    data.vec_printf("OK %d\n", (int)getpid());
   }
   else if (strcasecmp("shutdown", (char *)(packet->arg[0])) == 0)
   {
     if (packet->argc == 1)
     {
       Server->shutdown= true;
-      snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_SUCCESS);
+      data.vec_printf(TEXT_SUCCESS);
     }
     else if (packet->argc == 2 &&
              strcasecmp("graceful", (char *)(packet->arg[1])) == 0)
     {
       Server->shutdown_graceful= true;
-      snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_SUCCESS);
+      data.vec_printf(TEXT_SUCCESS);
     }
     else
     {
       // shutdown
-      snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
+      data.vec_printf(TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
     }
   }
   else if (strcasecmp("verbose", (char *)(packet->arg[0])) == 0)
   {
-    snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "OK %s\n", gearmand_verbose_name(Gearmand()->verbose));
+    data.vec_printf("OK %s\n", gearmand_verbose_name(Gearmand()->verbose));
   }
   else if (strcasecmp("version", (char *)(packet->arg[0])) == 0)
   {
-    snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "OK %s\n", PACKAGE_VERSION);
+    data.vec_printf("OK %s\n", PACKAGE_VERSION);
   }
   else
   {
     gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Failed to find command %.*s(%" PRIu64 ")",
                        packet->arg_size[0], packet->arg[0], 
                        packet->arg_size[0]);
-    snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_UNKNOWN_COMMAND, (int)packet->arg_size[0], (char *)(packet->arg[0]));
+    data.vec_printf(TEXT_ERROR_UNKNOWN_COMMAND, (int)packet->arg_size[0], (char *)(packet->arg[0]));
   }
 
   gearman_server_packet_st *server_packet= gearman_server_packet_create(server_con->thread, false);
   if (server_packet == NULL)
   {
-    gearmand_debug("free");
-    free(data);
-    return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+    return gearmand_gerror("calling gearman_server_packet_create()", GEARMAND_MEMORY_ALLOCATION_FAILURE);
   }
 
-  gearmand_packet_init(&(server_packet->packet), GEARMAN_MAGIC_TEXT, GEARMAN_COMMAND_TEXT);
+  server_packet->packet.reset(GEARMAN_MAGIC_TEXT, GEARMAN_COMMAND_TEXT);
 
-  server_packet->packet.magic= GEARMAN_MAGIC_TEXT;
-  server_packet->packet.command= GEARMAN_COMMAND_TEXT;
   server_packet->packet.options.complete= true;
   server_packet->packet.options.free_data= true;
 
-  if (data[0] == 0)
+  if (data.size() == 0)
   {
-    snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_INTERNAL_ERROR);
+    data.vec_append_printf(TEXT_ERROR_INTERNAL_ERROR);
   }
-  server_packet->packet.data= data;
-  server_packet->packet.data_size= strlen(data);
+
+  gearman_string_t taken= data.take();
+  server_packet->packet.data= gearman_c_str(taken);
+  server_packet->packet.data_size= gearman_size(taken);
 
   int error;
   if ((error= pthread_mutex_lock(&server_con->thread->lock)) == 0)
   {
-    GEARMAN_FIFO__ADD(server_con->io_packet, server_packet);
+    GEARMAND_FIFO__ADD(server_con->io_packet, server_packet);
     if ((error= pthread_mutex_unlock(&(server_con->thread->lock))))
     {
       gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
@@ -434,5 +393,5 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
 
   gearman_server_con_io_add(server_con);
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }

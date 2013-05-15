@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -169,6 +169,12 @@ gearman_return_t gearman_task_return(const gearman_task_st *task);
 
 GEARMAN_API
 const char *gearman_task_strstate(const gearman_task_st *);
+
+GEARMAN_API
+bool gearman_task_has_exception(const gearman_task_st* task_shell);
+
+GEARMAN_API
+gearman_string_t gearman_task_exception(const gearman_task_st *);
 
 /** @} */
 

@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -41,6 +41,16 @@
 #include "libgearman/allocator.hpp" 
 #include "libgearman/server_options.hpp"
 #include "libgearman/interface/packet.hpp"
+#include "libgearman/vector.h" 
+#include "libgearman/assert.hpp" 
+
+enum universal_options_t
+{
+  GEARMAN_UNIVERSAL_NON_BLOCKING,
+  GEARMAN_UNIVERSAL_DONT_TRACK_PACKETS,
+  GEARMAN_UNIVERSAL_IDENTIFY,
+  GEARMAN_UNIVERSAL_MAX
+};
 
 /**
   @todo this is only used by the server and should be made private.
@@ -73,6 +83,7 @@ struct gearman_universal_st
   gearman_log_fn *log_fn;
   void *log_context;
   gearman_allocator_t allocator;
+  struct gearman_vector_st *_identifier;
   struct gearman_vector_st *_namespace;
   struct error_st {
     gearman_return_t rc;
@@ -129,6 +140,11 @@ struct gearman_universal_st
     _error.last_errno= last_errno_;
   }
 
+  bool has_connections() const
+  {
+    return con_count;
+  }
+
   void reset_error()
   {
     _error.rc= GEARMAN_SUCCESS;
@@ -136,26 +152,9 @@ struct gearman_universal_st
     _error.last_error[0]= 0;
   }
 
-  gearman_return_t option(gearman_universal_options_t option_, bool value)
-  {
-    switch (option_)
-    {
-    case GEARMAN_NON_BLOCKING:
-      non_blocking(value);
-      break;
+  gearman_return_t option(const universal_options_t& option_, bool value);
 
-    case GEARMAN_DONT_TRACK_PACKETS:
-      break;
-
-    case GEARMAN_MAX:
-    default:
-      return GEARMAN_INVALID_COMMAND;
-    }
-
-    return GEARMAN_SUCCESS;
-  }
-
-  gearman_universal_st(const gearman_universal_options_t *options_= NULL) :
+  gearman_universal_st(const universal_options_t *options_= NULL) :
     verbose(GEARMAN_VERBOSE_NEVER),
     con_count(0),
     packet_count(0),
@@ -169,6 +168,7 @@ struct gearman_universal_st
     log_fn(NULL),
     log_context(NULL),
     allocator(gearman_default_allocator()),
+    _identifier(NULL),
     _namespace(NULL)
   {
     wakeup_fd[0]= INVALID_SOCKET;
@@ -176,7 +176,7 @@ struct gearman_universal_st
 
     if (options_)
     {
-      while (*options_ != GEARMAN_MAX)
+      while (*options_ != GEARMAN_UNIVERSAL_MAX)
       {
         /**
           @note Check for bad value, refactor gearman_add_options().
@@ -186,6 +186,14 @@ struct gearman_universal_st
       }
     }
   }
+
+  ~gearman_universal_st()
+  {
+    gearman_string_free(_identifier);
+    gearman_string_free(_namespace);
+  }
+
+  void identifier(const char *identifier_, const size_t identifier_size_);
 };
 
 static inline bool gearman_universal_is_non_blocking(gearman_universal_st &self)

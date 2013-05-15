@@ -2,7 +2,7 @@
  * 
  *  Libgearman library
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -36,6 +36,14 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdlib>
+#include <cstdarg>
+
+#include "libgearman-1.0/string.h"
+
+#define GEARMAN_VECTOR_BLOCK_SIZE 1024*4
+
 /**
   vectors are always under our control so we make some assumptions about them.
 
@@ -47,66 +55,106 @@ struct gearman_vector_st {
   char *end;
   char *string;
   size_t current_size;
+
   struct Options {
     bool is_allocated;
     bool is_initialized;
+    Options() :
+      is_allocated(false),
+      is_initialized(true)
+    { }
   } options;
+
+  gearman_vector_st() :
+    end(NULL),
+    string(NULL),
+    current_size(0)
+  {
+  }
+
+  gearman_vector_st(const gearman_vector_st& copy) :
+    end(NULL),
+    string(NULL),
+    current_size(0)
+  {
+    store(copy);
+  }
+
+  gearman_vector_st(const size_t reserve);
+
+  ~gearman_vector_st();
+
+  bool resize(const size_t);
+  bool reserve(const size_t);
+
+  int	vec_printf(const char *format__, ...); // __printflike(1, 2);
+  int	vec_append_printf(const char *format__, ...); // __printflike(1, 2);
 
   void clear()
   {
     end= string;
+    if (current_size)
+    {
+      string[0]= 0;
+    }
   }
-};
 
+  const char* value() const
+  {
+    return string;
+  }
+
+  const void* void_ptr() const
+  {
+    return (const void*)string;
+  }
+
+  bool empty() const
+  {
+    return string == end;
+  }
+
+  size_t capacity() const
+  {
+    // We tell a white lie about size since we always keep things null
+    // terminated
+    if (current_size == 1)
+    {
+      return 0;
+    }
+
+    return current_size;
+  }
+
+  char* ptr(size_t expect)
+  {
+    if (resize(expect +1))
+    {
+      end= string +expect;
+      string[expect]= 0;
+      return string;
+    }
+
+    return NULL;
+  }
+
+  bool store(const gearman_vector_st&);
+  bool store(const char*, const size_t);
+  bool append(const char* arg_, const size_t arg_length_);
+  bool append_character(const char character);
+
+  size_t size() const;
+  gearman_string_t take();
+
+private:
+  void init();
+  int	vec_size_printf(const char *format__, va_list args__);
+  int	vec_ptr_printf(const int required_size, const char *format__, va_list args__);
+};
 
 gearman_vector_st *gearman_string_create(gearman_vector_st *string,
                                          size_t initial_size);
 
 
-gearman_vector_st *gearman_string_create(gearman_vector_st *self, const char *str, size_t initial_size);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-gearman_vector_st *gearman_string_clone(const gearman_vector_st *);
-
-
-gearman_return_t gearman_string_check(gearman_vector_st *string, size_t need);
-
-gearman_return_t gearman_string_reserve(gearman_vector_st *string, size_t need);
-
-char *gearman_string_c_copy(gearman_vector_st *string);
-
-
-gearman_return_t gearman_string_append_character(gearman_vector_st *string,
-                                                 char character);
-
-gearman_return_t gearman_string_append(gearman_vector_st *string,
-                                       const char *value, size_t length);
-
-void gearman_string_reset(gearman_vector_st *string);
-
-
-void gearman_string_free(gearman_vector_st *string);
-
-
-size_t gearman_string_length(const gearman_vector_st *self);
-
-
-const char *gearman_string_value(const gearman_vector_st *self);
-
-
-char *gearman_string_value_mutable(const gearman_vector_st *self);
-
-
-gearman_string_t gearman_string(const gearman_vector_st *self);
-
-
-gearman_string_t gearman_string_take_string(gearman_vector_st *self);
-
-#ifdef __cplusplus
-}
-#endif
+gearman_vector_st *gearman_string_create(gearman_vector_st *self, 
+                                         const char *str, size_t initial_size);

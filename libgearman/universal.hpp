@@ -49,9 +49,7 @@ void gearman_universal_free(gearman_universal_st &gearman);
 
 void gearman_free_all_packets(gearman_universal_st &gearman);
 
-bool gearman_request_option(gearman_universal_st &universal, gearman_string_t &option);
-
-gearman_return_t gearman_universal_set_option(gearman_universal_st &self, gearman_universal_options_t option, bool value);
+gearman_return_t gearman_universal_set_option(gearman_universal_st &self, universal_options_t option, bool value);
 
 void gearman_set_log_fn(gearman_universal_st &self, gearman_log_fn *function, void *context, gearman_verbose_t verbose);
 
@@ -62,6 +60,9 @@ int gearman_universal_timeout(gearman_universal_st &self);
 void gearman_universal_set_namespace(gearman_universal_st &self, const char *namespace_key, size_t namespace_key_size);
 
 void gearman_reset(gearman_universal_st& universal);
+
+gearman_return_t cancel_job(gearman_universal_st& universal,
+                            gearman_job_handle_t job_handle);
 
 // Flush the send buffer for all connections.
 void gearman_flush_all(gearman_universal_st&);
@@ -100,12 +101,12 @@ void gearman_nap(gearman_universal_st &self);
 
 void gearman_nap(int arg);
 
-static inline void gearman_universal_add_options(gearman_universal_st &self, gearman_universal_options_t options)
+static inline void gearman_universal_add_options(gearman_universal_st &self, universal_options_t options)
 {
   (void)gearman_universal_set_option(self, options, true);
 }
 
-static inline void gearman_universal_remove_options(gearman_universal_st &self, gearman_universal_options_t options)
+static inline void gearman_universal_remove_options(gearman_universal_st &self, universal_options_t options)
 {
   (void)gearman_universal_set_option(self, options, false);
 }

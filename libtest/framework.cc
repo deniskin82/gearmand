@@ -51,6 +51,7 @@
 #include <unistd.h>
 
 namespace {
+#if defined(DEBUG) && DEBUG
   int open_file_descriptors(std::set<int>& pre_existing_fd, const bool report)
   {
     int max= getdtablesize();
@@ -99,6 +100,7 @@ namespace {
 
     return counter;
   }
+#endif // #if defined(DEBUG) && DEBUG
 } // namespace
 
 namespace libtest {
@@ -125,7 +127,7 @@ Framework::Framework(libtest::SignalThread& signal_,
   get_world(this);
 }
 
-void Framework::collections(collection_st* collections_)
+void Framework::collections(collection_st collections_[])
 {
   for (collection_st *next= collections_; next and next->name; next++)
   {

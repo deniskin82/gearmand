@@ -214,9 +214,6 @@
 /* If Memcached binary is available */
 #undef HAVE_MEMCACHED_BINARY
 
-/* If Memcached binary with sasl support is available */
-#undef HAVE_MEMCACHED_SASL_BINARY
-
 /* Define to 1 if you have the `memchr' function. */
 #undef HAVE_MEMCHR
 
@@ -450,6 +447,9 @@
 /* Name of the memcached binary used in make test */
 #undef MEMCACHED_BINARY
 
+/* Memcached binary version */
+#undef MEMCACHED_VERSION
+
 /* Name of the mysqld binary used in make test */
 #undef MYSQLD_BINARY
 
@@ -507,9 +507,6 @@
 /* Whether we build for Linux */
 #undef TARGET_OS_LINUX
 
-/* Whether we build for OSX */
-#undef TARGET_OS_OSX
-
 /* Whether we are building for Solaris */
 #undef TARGET_OS_SOLARIS
 
@@ -530,9 +527,6 @@
 
 /* Version number of package */
 #undef VERSION
-
-/* Version of Windows */
-#undef WINVER
 
 /* machine is big-endian */
 #undef WORDS_BIGENDIAN
@@ -561,9 +555,6 @@
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
    #define below would cause a syntax error. */
 #undef _UINT8_T
-
-/* Magical number to make things work */
-#undef _WIN32_WINNT
 
 /* Define to 500 only on HP-UX. */
 #undef _XOPEN_SOURCE

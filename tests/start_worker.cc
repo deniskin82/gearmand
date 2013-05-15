@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,8 @@
 using namespace libtest;
 using namespace datadifferential;
 
-#include <tests/worker.h>
+#include "libgearman/worker.hpp"
+using namespace org::gearmand;
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -142,7 +143,7 @@ static void thread_runner(context_st* con)
     return;
   }
 
-  test::Worker worker(context->port);
+  libgearman::Worker worker(context->port);
   if (&worker == NULL)
   {
     Error << "Failed to create Worker";
@@ -212,9 +213,10 @@ static void thread_runner(context_st* con)
 
     if (ret == GEARMAN_SHUTDOWN)
     {
-      if (gearman_failed(gearman_worker_unregister_all(&worker)))
+      gearman_return_t unreg_ret;
+      if (gearman_failed((unreg_ret= gearman_worker_unregister_all(&worker))))
       {
-        Error << "Failed to unregister " << context->function_name;
+        Error << "Failed to unregister " << context->function_name << " " << gearman_strerror(unreg_ret);
       }
       continue;
     }

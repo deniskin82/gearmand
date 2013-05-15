@@ -68,7 +68,7 @@ static gearmand_error_t gearmand_packet_unpack_header(gearmand_packet_st *packet
   else
   {
     gearmand_warning("invalid magic value");
-    return GEARMAN_INVALID_MAGIC;
+    return GEARMAND_INVALID_MAGIC;
   }
 
   memcpy(&tmp, packet->args + 4, 4);
@@ -78,13 +78,13 @@ static gearmand_error_t gearmand_packet_unpack_header(gearmand_packet_st *packet
       packet->command >= GEARMAN_COMMAND_MAX)
   {
     gearmand_error("invalid command value");
-    return GEARMAN_INVALID_COMMAND;
+    return GEARMAND_INVALID_COMMAND;
   }
 
   memcpy(&tmp, packet->args + 8, 4);
   packet->data_size= ntohl(tmp);
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 class Geartext : public gearmand::protocol::Context {
@@ -119,7 +119,7 @@ public:
         uint8_t* ptr= (uint8_t *)memchr(data, '\n', data_size);
         if (ptr == NULL)
         {
-          ret_ptr= GEARMAN_IO_WAIT;
+          ret_ptr= GEARMAND_IO_WAIT;
           return 0;
         }
 
@@ -151,7 +151,7 @@ public:
 
           ret_ptr= gearmand_packet_create(packet, data, ptr == NULL ? arg_size :
                                           size_t(ptr - ((uint8_t *)data)));
-          if (ret_ptr != GEARMAN_SUCCESS)
+          if (ret_ptr != GEARMAND_SUCCESS)
           {
             return used_size;
           }
@@ -159,22 +159,22 @@ public:
 
         return used_size;
       }
-      else if (data_size < GEARMAN_PACKET_HEADER_SIZE)
+      else if (data_size < GEARMAND_PACKET_HEADER_SIZE)
       {
-        ret_ptr= GEARMAN_IO_WAIT;
+        ret_ptr= GEARMAND_IO_WAIT;
         return 0;
       }
 
       packet->args= packet->args_buffer;
-      packet->args_size= GEARMAN_PACKET_HEADER_SIZE;
-      memcpy(packet->args, data, GEARMAN_PACKET_HEADER_SIZE);
+      packet->args_size= GEARMAND_PACKET_HEADER_SIZE;
+      memcpy(packet->args, data, GEARMAND_PACKET_HEADER_SIZE);
 
       if (gearmand_failed(ret_ptr= gearmand_packet_unpack_header(packet)))
       {
         return 0;
       }
 
-      used_size= GEARMAN_PACKET_HEADER_SIZE;
+      used_size= GEARMAND_PACKET_HEADER_SIZE;
     }
     else
     {
@@ -193,7 +193,7 @@ public:
           gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
                              "Possible protocol error for %s, received only %u args",
                              gearman_command_info(packet->command)->name, packet->argc);
-          ret_ptr= GEARMAN_IO_WAIT;
+          ret_ptr= GEARMAND_IO_WAIT;
           return used_size;
         }
 
@@ -210,7 +210,7 @@ public:
       {
         if ((data_size - used_size) < packet->data_size)
         {
-          ret_ptr= GEARMAN_IO_WAIT;
+          ret_ptr= GEARMAND_IO_WAIT;
           return used_size;
         }
 
@@ -251,7 +251,7 @@ public:
                          gearman_strcommand(packet->command));
     }
 
-    ret_ptr= GEARMAN_SUCCESS;
+    ret_ptr= GEARMAND_SUCCESS;
     return used_size;
   }
 
@@ -279,18 +279,18 @@ public:
 
     if (packet->args_size == 0)
     {
-      ret_ptr= GEARMAN_SUCCESS;
+      ret_ptr= GEARMAND_SUCCESS;
       return 0;
     }
 
     if (packet->args_size > data_size)
     {
-      ret_ptr= GEARMAN_FLUSH_DATA;
+      ret_ptr= GEARMAND_FLUSH_DATA;
       return 0;
     }
 
     memcpy(data, packet->args, packet->args_size);
-    ret_ptr= GEARMAN_SUCCESS;
+    ret_ptr= GEARMAND_SUCCESS;
 
     return packet->args_size;
   }
@@ -306,7 +306,7 @@ static gearmand_error_t _gear_con_add(gearman_server_con_st *connection)
 
   connection->set_protocol(&gear_context);
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 namespace gearmand {
@@ -326,26 +326,37 @@ Gear::~Gear()
 
 gearmand_error_t Gear::start(gearmand_st *gearmand)
 {
-  gearmand_info("Initializing Gear");
-
   gearmand_error_t rc;
+
+  if (_port.compare(GEARMAN_DEFAULT_TCP_PORT_STRING) == 0)
+  {
+    char* service;
+    if ((service= getenv("GEARMAND_PORT")) and service[0])
+    {
+      _port.clear();
+      _port.append(service);
+    }
+  }
+
   if (_port.empty())
   {
-    struct servent *gearman_servent= getservbyname(GEARMAN_DEFAULT_TCP_SERVICE, NULL);
+    const char* service= GEARMAN_DEFAULT_TCP_PORT_STRING;
+    struct servent *gearman_servent;
+    if ((gearman_servent= getservbyname(GEARMAN_DEFAULT_TCP_SERVICE, NULL)))
+    {
+      if (gearman_servent and gearman_servent->s_name)
+      {
+        service= gearman_servent->s_name;
+      }
+    }
 
-    if (gearman_servent and gearman_servent->s_name)
-    {
-      rc= gearmand_port_add(gearmand, gearman_servent->s_name, _gear_con_add);
-    }
-    else
-    {
-      rc= gearmand_port_add(gearmand, GEARMAN_DEFAULT_TCP_PORT_STRING, _gear_con_add);
-    }
+    _port.clear();
+    _port.append(service);
   }
-  else
-  {
-    rc= gearmand_port_add(gearmand, _port.c_str(), _gear_con_add);
-  }
+
+  gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Initializing Gear on port %s", _port.c_str());
+
+  rc= gearmand_port_add(gearmand, _port.c_str(), _gear_con_add);
 
   return rc;
 }

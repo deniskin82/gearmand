@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -64,9 +64,12 @@ using namespace libtest;
 #define WORKER_FUNCTION_NAME "client_test"
 #define WORKER_CHUNKED_FUNCTION_NAME "reverse_test"
 
+#include "libgearman/client.hpp"
+#include "libgearman/worker.hpp"
+using namespace org::gearmand;
+
 #include "tests/limits.h"
 #include "tests/do.h"
-#include "tests/client.h"
 #include "tests/server_options.h"
 #include "tests/do_background.h"
 #include "tests/execute.h"
@@ -128,29 +131,14 @@ extern "C"
   static __attribute__((noreturn)) void *client_thread(void *object)
   {
     volatile gearman_return_t *ret= (volatile gearman_return_t *)object;
-    size_t result_size;
-
-    gearman_client_st client;
-    gearman_client_st* client_ptr= gearman_client_create(&client);
-    assert(client_ptr == &client);
-
-    if (client_ptr == NULL)
     {
-      *ret= GEARMAN_MEMORY_ALLOCATION_FAILURE;
-      pthread_exit(0);
-    }
-
-    do {
-      gearman_return_t rc= gearman_client_add_server(&client, NULL, libtest::default_port());
-      if (gearman_failed(rc))
-      {
-        *ret= rc;
-        break;
-      }
-
+      libgearman::Client client(libtest::default_port());
       gearman_client_set_timeout(&client, 400);
+
       for (size_t x= 0; x < 5; x++)
       {
+        gearman_return_t rc;
+        size_t result_size;
         (void)gearman_client_do(&client, "client_test_temp", NULL, NULL, 0, &result_size, &rc);
 
         if (gearman_failed(rc))
@@ -159,22 +147,11 @@ extern "C"
           break;
         }
       }
-
-      break;
-    } while (1);
-
-    gearman_client_free(client_ptr);
+    }
 
     pthread_exit(0);
   }
 }
-
-#if 0
-static void log_2_stderr(const char *line, gearman_verbose_t verbose, void*)
-{
-  Error << line << " " << gearman_verbose_name(verbose);
-}
-#endif
 
 static test_return_t init_test(void *)
 {
@@ -210,20 +187,23 @@ static test_return_t clone_test(void *)
   }
 
   {
-    const gearman_client_st *from= gearman_client_create(NULL);
+    gearman_client_st *from= gearman_client_create(NULL);
+    ASSERT_TRUE(from);
     gearman_client_st* client= gearman_client_clone(NULL, from);
-    test_truth(client);
+    ASSERT_TRUE(client);
     gearman_client_free(client);
+    gearman_client_free(from);
   }
 
   {
     gearman_client_st *from_with_host= gearman_client_create(NULL);
-    test_truth(from_with_host);
-    gearman_client_add_server(from_with_host, "localhost", 12345);
+    ASSERT_TRUE(from_with_host);
+    ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_add_server(from_with_host, "localhost", 12345));
+    ASSERT_TRUE(from_with_host->impl()->universal.con_list);
     gearman_client_st* client= gearman_client_clone(NULL, from_with_host);
-    test_truth(client);
-    test_truth(client->impl()->universal.con_list);
-    test_truth(gearman_client_compare(client, from_with_host));
+    ASSERT_TRUE(client);
+    ASSERT_TRUE(client->impl()->universal.con_list);
+    ASSERT_TRUE(gearman_client_compare(client, from_with_host));
     gearman_client_free(client);
     gearman_client_free(from_with_host);
   }
@@ -244,7 +224,7 @@ static test_return_t option_test(void *)
     test_false(gear->impl()->options.unbuffered_result);
     test_false(gear->impl()->options.no_new);
     test_false(gear->impl()->options.free_tasks);
-    test_true(gear->impl()->options.generate_unique);
+    ASSERT_FALSE(gear->impl()->options.generate_unique);
   }
 
   /* Set up for default options */
@@ -261,7 +241,7 @@ static test_return_t option_test(void *)
     test_false(gear->impl()->options.unbuffered_result);
     test_false(gear->impl()->options.no_new);
     test_false(gear->impl()->options.free_tasks);
-    test_true(gear->impl()->options.generate_unique);
+    ASSERT_FALSE(gear->impl()->options.generate_unique);
   }
 
   /*
@@ -275,7 +255,7 @@ static test_return_t option_test(void *)
       test_false(gear->impl()->options.unbuffered_result);
       test_false(gear->impl()->options.no_new);
       test_false(gear->impl()->options.free_tasks);
-      test_true(gear->impl()->options.generate_unique);
+      ASSERT_FALSE(gear->impl()->options.generate_unique);
     }
     gearman_client_remove_options(gear, GEARMAN_CLIENT_NO_NEW);
     { // Initial Allocated, no changes
@@ -284,7 +264,7 @@ static test_return_t option_test(void *)
       test_false(gear->impl()->options.unbuffered_result);
       test_false(gear->impl()->options.no_new);
       test_false(gear->impl()->options.free_tasks);
-      test_true(gear->impl()->options.generate_unique);
+      ASSERT_FALSE(gear->impl()->options.generate_unique);
     }
   }
 
@@ -333,7 +313,7 @@ static test_return_t option_test(void *)
         test_false(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_false(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
 
       gearman_client_remove_options(gear, GEARMAN_CLIENT_GENERATE_UNIQUE);
@@ -342,7 +322,7 @@ static test_return_t option_test(void *)
         test_false(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_false(gear->impl()->options.free_tasks);
-        test_false(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
 
       gearman_client_set_options(gear, GEARMAN_CLIENT_GENERATE_UNIQUE);
@@ -351,7 +331,7 @@ static test_return_t option_test(void *)
         test_false(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_false(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_TRUE(gear->impl()->options.generate_unique);
       }
     }
 
@@ -367,7 +347,7 @@ static test_return_t option_test(void *)
         test_false(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_false(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
       gearman_client_add_options(gear, GEARMAN_CLIENT_FREE_TASKS);
       { // All defaults, except timeout_return
@@ -376,7 +356,7 @@ static test_return_t option_test(void *)
         test_false(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_truth(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
       gearman_client_add_options(gear, (gearman_client_options_t)(GEARMAN_CLIENT_NON_BLOCKING|GEARMAN_CLIENT_UNBUFFERED_RESULT));
       { // GEARMAN_CLIENT_NON_BLOCKING set to default, by default.
@@ -385,7 +365,7 @@ static test_return_t option_test(void *)
         test_truth(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_truth(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
     }
     /*
@@ -399,7 +379,7 @@ static test_return_t option_test(void *)
         test_false(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_false(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
       gearman_client_add_options(gear, GEARMAN_CLIENT_FREE_TASKS);
       { // All defaults, except timeout_return
@@ -408,7 +388,7 @@ static test_return_t option_test(void *)
         test_false(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_truth(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
       gearman_client_add_options(gear, (gearman_client_options_t)(GEARMAN_CLIENT_FREE_TASKS|GEARMAN_CLIENT_UNBUFFERED_RESULT));
       { // GEARMAN_CLIENT_NON_BLOCKING set to default, by default.
@@ -417,7 +397,7 @@ static test_return_t option_test(void *)
         test_truth(gear->impl()->options.unbuffered_result);
         test_false(gear->impl()->options.no_new);
         test_truth(gear->impl()->options.free_tasks);
-        test_true(gear->impl()->options.generate_unique);
+        ASSERT_FALSE(gear->impl()->options.generate_unique);
       }
     }
   }
@@ -439,11 +419,35 @@ static test_return_t echo_test(void *object)
   return TEST_SUCCESS;
 }
 
+static void log_printer(const char *line, gearman_verbose_t verbose, void*)
+{
+  Out << gearman_verbose_name(verbose) <<  " : " << line;
+}
+
+static test_return_t gearman_client_set_log_fn_TEST(void *object)
+{
+  gearman_client_st *client= (gearman_client_st *)object;
+  ASSERT_TRUE(client);
+
+  gearman_log_fn *func= log_printer;
+  gearman_client_set_log_fn(client, func, NULL, GEARMAN_VERBOSE_MAX);
+
+  gearman_string_t value= { test_literal_param("This is my echo test") };
+
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_echo(client, gearman_string_param(value)));
+
+  return TEST_SUCCESS;
+}
+
 static test_return_t submit_job_test(void *object)
 {
   gearman_client_st *client= (gearman_client_st *)object;
+  ASSERT_TRUE(client);
+
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_echo(client, test_literal_param("foo")));
+
   const char *worker_function= (const char *)gearman_client_context(client);
-  test_true(worker_function);
+  ASSERT_TRUE(worker_function);
   gearman_string_t value= { test_literal_param("submit_job_test") };
 
   size_t result_length;
@@ -758,27 +762,25 @@ static test_return_t background_failure_test(void *object)
 
 static test_return_t add_servers_test(void *)
 {
-  gearman_client_st *client= gearman_client_create(NULL);
-  test_truth(client);
+  libgearman::Client client;
 
   ASSERT_EQ(GEARMAN_SUCCESS,
-               gearman_client_add_servers(client, "localhost:4730,localhost"));
+               gearman_client_add_servers(&client, "localhost:4730,localhost"));
 
   if (libtest::check_dns())
   {
     ASSERT_EQ(GEARMAN_GETADDRINFO,
-                 gearman_client_add_servers(client, "exist.gearman.info:7003,does_not_exist.gearman.info:12345"));
+                 gearman_client_add_servers(&client, "exist.gearman.info:7003,does_not_exist.gearman.info:12345"));
   }
-
-  gearman_client_free(client);
 
   return TEST_SUCCESS;
 }
 
 static test_return_t hostname_resolution(void *)
 {
-  test::Client client;
-  assert(&client);
+  test_skip_valgrind();
+
+  libgearman::Client client;
 
   test_skip(GEARMAN_SUCCESS, gearman_client_add_servers(&client, "exist.gearman.info:12345"));
 
@@ -826,7 +828,7 @@ static test_return_t bug_518512_test(void *)
 {
   size_t result_size;
 
-  test::Client client(libtest::default_port());
+  libgearman::Client client(libtest::default_port());
 
   gearman_client_set_timeout(&client, 0);
   gearman_return_t rc;
@@ -840,7 +842,7 @@ static test_return_t bug_518512_test(void *)
   std::auto_ptr<worker_handle_st> completion_worker(test_worker_start(libtest::default_port(), NULL, "client_test_temp",
                                                                       func_arg, NULL, gearman_worker_options_t()));
 
-  test::Client client2(libtest::default_port());
+  libgearman::Client client2(libtest::default_port());
   gearman_client_set_timeout(&client2, -1);
   result= gearman_client_do(&client2, "client_test_temp", NULL, NULL, 0,
                             &result_size, &rc);
@@ -889,20 +891,16 @@ static test_return_t loop_test(void *)
 
 static test_return_t regression_785203_do_test(void *)
 {
-  gearman_client_st *client;
-  test_truth(client= gearman_client_create(NULL));
+  libgearman::Client client(libtest::default_port());
 
-  gearman_client_add_options(client, GEARMAN_CLIENT_FREE_TASKS);
+  gearman_client_add_options(&client, GEARMAN_CLIENT_FREE_TASKS);
   { // All defaults, except timeout_return
-    test_truth(gearman_is_allocated(client));
-    test_false(client->impl()->options.non_blocking);
-    test_false(client->impl()->options.unbuffered_result);
-    test_false(client->impl()->options.no_new);
-    test_truth(client->impl()->options.free_tasks);
+    test_truth(gearman_is_allocated(&client));
+    test_false((&client)->impl()->options.non_blocking);
+    test_false((&client)->impl()->options.unbuffered_result);
+    test_false((&client)->impl()->options.no_new);
+    test_truth((&client)->impl()->options.free_tasks);
   }
-
-  ASSERT_EQ(GEARMAN_SUCCESS,
-               gearman_client_add_server(client, NULL, libtest::default_port()));
 
   gearman_function_t func= gearman_function_create_v2(echo_or_react_worker_v2);
   std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(), NULL,
@@ -911,13 +909,11 @@ static test_return_t regression_785203_do_test(void *)
 
   gearman_return_t rc;
   size_t result_length;
-  void *result= gearman_client_do(client, __func__, NULL, 
+  void *result= gearman_client_do(&client, __func__, NULL, 
                                   test_literal_param("keep it rocking and sing"),
                                   &result_length, &rc);
   test_true(result);
   free(result);
-
-  gearman_client_free(client);
 
   return TEST_SUCCESS;
 }
@@ -932,24 +928,20 @@ static test_return_t regression_785203_do_background_test(void *object)
                                                            __func__,
                                                            echo_react_chunk_fn_v2, NULL, gearman_worker_options_t()));
 
-  gearman_client_st *client;
-  test_truth(client= gearman_client_create(NULL));
+  libgearman::Client client(libtest::default_port());
 
-  ASSERT_EQ(GEARMAN_SUCCESS,
-               gearman_client_add_server(client, NULL, libtest::default_port()));
-
-  gearman_client_add_options(client, GEARMAN_CLIENT_FREE_TASKS);
+  gearman_client_add_options(&client, GEARMAN_CLIENT_FREE_TASKS);
   { // All defaults, except timeout_return
-    test_truth(gearman_is_allocated(client));
-    test_false(client->impl()->options.non_blocking);
-    test_false(client->impl()->options.unbuffered_result);
-    test_false(client->impl()->options.no_new);
-    test_truth(client->impl()->options.free_tasks);
+    test_truth(gearman_is_allocated((&client)));
+    test_false((&client)->impl()->options.non_blocking);
+    test_false((&client)->impl()->options.unbuffered_result);
+    test_false((&client)->impl()->options.no_new);
+    test_truth((&client)->impl()->options.free_tasks);
   }
 
   gearman_job_handle_t job_handle;
   ASSERT_EQ(GEARMAN_SUCCESS,
-               gearman_client_do_background(client, __func__, 
+               gearman_client_do_background(&client, __func__, 
                                             NULL,  // No unique requested
                                             test_literal_param("keep it rocking and sing"),
                                             job_handle));
@@ -960,18 +952,16 @@ static test_return_t regression_785203_do_background_test(void *object)
     uint32_t numerator;
     uint32_t denominator;
 
-    ret= gearman_client_job_status(client, job_handle, NULL, NULL, &numerator, &denominator);
+    ret= gearman_client_job_status(&client, job_handle, NULL, NULL, &numerator, &denominator);
   } while (gearman_continue(ret));
   ASSERT_EQ(GEARMAN_SUCCESS, ret);
-
-  gearman_client_free(client);
 
   return TEST_SUCCESS;
 }
 
 static test_return_t regression2_TEST(void *)
 {
-  test::Client client;
+  libgearman::Client client;
 
   size_t result_length;
   gearman_return_t rc;
@@ -1293,6 +1283,22 @@ static test_return_t gearman_client_set_identifier_plus_random_TEST(void* object
   return TEST_SUCCESS;
 }
 
+static test_return_t gearman_client_cancel_job_TEST(void* object)
+{
+  gearman_client_st *client= (gearman_client_st *)object;
+
+  gearman_job_handle_t job_handle;
+  strcpy(job_handle, __func__);
+
+  // For the moment we won't test the return value since this will change once
+  // we formalize the behavior.
+  gearman_return_t ret= gearman_client_cancel_job(client, job_handle);
+  (void)ret;
+
+  return TEST_SUCCESS;
+}
+
+
 static test_return_t gearman_client_free_TEST(void *)
 {
   gearman_client_free(NULL);
@@ -1309,7 +1315,7 @@ static test_return_t gearman_client_error_TEST(void *)
 
 static test_return_t gearman_client_error_no_error_TEST(void *)
 {
-  test::Client client;
+  libgearman::Client client;
   test_null(gearman_client_error(&client));
 
   return TEST_SUCCESS;
@@ -1324,7 +1330,7 @@ static test_return_t gearman_client_errno_TEST(void *)
 
 static test_return_t gearman_client_errno_no_error_TEST(void *)
 {
-  test::Client client;
+  libgearman::Client client;
   ASSERT_EQ(0, gearman_client_errno(&client));
 
   return TEST_SUCCESS;
@@ -1395,6 +1401,618 @@ static test_return_t GEARMAN_CLIENT_GENERATE_UNIQUE_SETUP(void *object)
   return TEST_SUCCESS;
 }
 
+static test_return_t gearman_client_add_server_localhost_TEST(void*)
+{
+  libgearman::Client client;
+
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_add_server(&client, "localhost", libtest::default_port()));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_echo(&client, test_literal_param(__func__)));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_server_empty_quote_TEST(void*)
+{
+  libgearman::Client client;
+
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_add_server(&client, "", libtest::default_port()));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_echo(&client, test_literal_param(__func__)));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_create_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_st* clone;
+  ASSERT_TRUE((clone= gearman_client_create(NULL)));
+
+  gearman_client_free(clone);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_clone_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_st* clone;
+  ASSERT_TRUE((clone= gearman_client_clone(NULL, NULL)));
+
+  gearman_client_free(clone);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_free_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_free(NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_error_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_client_error(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_error_code_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_error_code(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_options_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(gearman_client_options_t(GEARMAN_WORKER_MAX), gearman_client_options(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_has_option_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(false, gearman_client_has_option(NULL, GEARMAN_CLIENT_GENERATE_UNIQUE));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_options_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  // Hopefile valgrind will catch any issues that might crop up here
+  gearman_client_set_options(NULL, GEARMAN_CLIENT_GENERATE_UNIQUE);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_options_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  // Hopefile valgrind will catch any issues that might crop up here
+  gearman_client_add_options(NULL, GEARMAN_CLIENT_GENERATE_UNIQUE);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_remove_options_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  // Hopefile valgrind will catch any issues that might crop up here
+  gearman_client_remove_options(NULL, GEARMAN_CLIENT_GENERATE_UNIQUE);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_timeout_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(-1, gearman_client_timeout(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_timeout_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_timeout(NULL, 23);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_context_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_client_context(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_context_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_context(NULL, NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_log_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_log_fn(NULL, NULL, NULL, GEARMAN_VERBOSE_FATAL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_workload_malloc_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_workload_malloc_fn(NULL, NULL, NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_workload_free_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_workload_free_fn(NULL, NULL, NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_memory_allocators_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_set_memory_allocators(NULL, NULL, NULL, NULL, NULL, NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_server_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_add_server(NULL, NULL, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_remove_servers_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_remove_servers(NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_wait_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_wait(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_do_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_do(NULL, NULL, NULL, NULL, 0, NULL, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_do_low_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_do_low(NULL, NULL, NULL, NULL, 0, NULL, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_do_high_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_do_high(NULL, NULL, NULL, NULL, 0, NULL, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_do_job_handle_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_client_do_job_handle(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_do_background_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_do_background(NULL, NULL, NULL, NULL, 0, NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_do_low_background_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_do_low_background(NULL, NULL, NULL, NULL, 0, NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_job_status_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_job_status(NULL, NULL, NULL, NULL, NULL, NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_unique_status_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_status_t status= gearman_client_unique_status(NULL, NULL, 0);
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_status_return(status));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_do_high_background_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_do_high_background(NULL, NULL, NULL, NULL, 0, NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_status_by_unique_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task_status_by_unique(NULL, NULL, NULL, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_echo_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_echo(NULL, NULL, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_task_free_all_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_task_free_all(NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_task_context_free_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_task_context_free_fn(NULL, NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task(NULL, NULL, NULL, NULL, NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_high_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task_high(NULL, NULL, NULL, NULL, NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_low_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task_low(NULL, NULL, NULL, NULL, NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_background_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task_background(NULL, NULL, NULL, NULL, NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_high_background_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task_high_background(NULL, NULL, NULL, NULL, NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_low_background_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task_low_background(NULL, NULL, NULL, NULL, NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_add_task_status_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(NULL, gearman_client_add_task_status(NULL, NULL, NULL, NULL, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_workload_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_workload_fn(NULL, NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_created_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_created_fn(NULL, NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_status_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_status_fn(NULL, NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_clear_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_clear_fn(NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_fail_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_fail_fn(NULL, NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_complete_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_complete_fn(NULL, NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_exception_fn_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_exception_fn(NULL, NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_run_tasks_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_run_tasks(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_compare_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(false, gearman_client_compare(NULL, NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_identifier_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_client_set_identifier(NULL, NULL, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_namespace_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_namespace(NULL, NULL, 0);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_set_server_option_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_client_set_namespace(NULL, NULL, 0);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_free_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_task_free(NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_context_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_task_context(NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_set_context_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_task_set_context(NULL, NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_function_name_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_task_function_name(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_unique_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_task_unique(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_job_handle_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_task_job_handle(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_is_known_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(false, gearman_task_is_known(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_is_running_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(false, gearman_task_is_running(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_numerator_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(0, gearman_task_numerator(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_denominator_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(0, gearman_task_denominator(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_give_workload_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_task_give_workload(NULL, NULL, 0);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_send_workload_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(0, gearman_task_send_workload(NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_data_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_task_data(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_data_size_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(0, gearman_task_data_size(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_take_data_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  size_t taken_space;
+  ASSERT_EQ(NULL, gearman_task_take_data(NULL, &taken_space));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_recv_data_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_return_t ret;
+  ASSERT_EQ(0, gearman_task_recv_data(NULL, NULL, 0, &ret));
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, ret);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_error_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_task_error(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_result_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_task_result(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_return_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_task_return(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_task_strstate_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_task_strstate(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_free_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  gearman_job_free(NULL);
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_send_data_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_job_send_data(NULL, NULL, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_send_warning_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_job_send_warning(NULL, NULL, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_send_status_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_job_send_status(NULL, 0, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_send_complete_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_job_send_complete(NULL, 0, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_send_exception_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_job_send_exception(NULL, 0, 0));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_send_fail_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(GEARMAN_INVALID_ARGUMENT, gearman_job_send_fail(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_handle_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_job_handle(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_function_name_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_job_function_name(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_unique_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_job_unique(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_workload_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_job_unique(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_workload_size_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(0, gearman_job_workload_size(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_take_workload_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_job_take_workload(NULL, NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_clone_worker_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_job_clone_worker(NULL));
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_error_GEARMAN_INVALID_ARGUMENT_TEST(void*)
+{
+  ASSERT_EQ(NULL, gearman_job_error(NULL));
+  return TEST_SUCCESS;
+}
+
 static test_return_t default_v1_SETUP(void *object)
 {
   gearman_function_t echo_react_fn= gearman_function_create_v1(echo_or_react_worker);
@@ -1453,15 +2071,20 @@ static test_return_t pre_logging(void *object)
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
   const char *argv[]= { "--exceptions", 0 };
-  if (server_startup(servers, "gearmand", libtest::default_port(), argv) == false)
+  in_port_t first_port= libtest::default_port();
+  ASSERT_TRUE(server_startup(servers, "gearmand", first_port, argv));
+
+  if (0)
   {
-    error= TEST_SKIPPED;
-    return NULL;
+    const char *null_args[]= { 0 };
+    in_port_t second_port= libtest::get_free_port();
+    ASSERT_TRUE(server_startup(servers, "gearmand", second_port, null_args));
   }
 
   client_test_st *test= new client_test_st();
+  ASSERT_TRUE(test);
 
-  test->add_server(NULL, libtest::default_port());
+  test->add_server(NULL, first_port);
 
   error= TEST_SUCCESS;
 
@@ -1477,10 +2100,121 @@ static bool world_destroy(void *object)
   return TEST_SUCCESS;
 }
 
+test_st gearman_client_add_server_TESTS[] ={
+  {"gearman_client_add_server(localhost)", 0, gearman_client_add_server_localhost_TEST },
+  {"gearman_client_add_server(empty quote)", 0, gearman_client_add_server_empty_quote_TEST },
+  {0, 0, 0}
+};
+
+test_st gearman_client_st_GEARMAN_INVALID_ARGUMENT_TESTS[] ={
+  {"gearman_client_create()", 0, gearman_client_create_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_clone()", 0, gearman_client_clone_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_free()", 0, gearman_client_free_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_error()", 0, gearman_client_error_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_error_code()", 0, gearman_client_error_code_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_options()", 0, gearman_client_options_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_has_option()", 0, gearman_client_has_option_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_options()", 0, gearman_client_set_options_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_option()", 0, gearman_client_add_options_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_remove_options()", 0, gearman_client_remove_options_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_timeout()", 0, gearman_client_timeout_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_timeout()", 0, gearman_client_set_timeout_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_context()", 0, gearman_client_context_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_context()", 0, gearman_client_set_context_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_log_fn()", 0, gearman_client_set_log_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_workload_malloc_fn()", 0, gearman_client_set_workload_malloc_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_workload_free_fn()", 0, gearman_client_set_workload_free_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_memory_allocators()", 0, gearman_client_set_memory_allocators_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_server()", 0, gearman_client_add_server_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_remove_servers()", 0, gearman_client_remove_servers_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_wait()", 0, gearman_client_wait_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_do()", 0, gearman_client_do_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_do_high()", 0, gearman_client_do_high_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_do_low()", 0, gearman_client_do_low_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_do_job_handle()", 0, gearman_client_do_job_handle_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_do_background()", 0, gearman_client_do_background_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_do_high_background()", 0, gearman_client_do_high_background_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_do_low_background()", 0, gearman_client_do_low_background_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_job_status()", 0, gearman_client_job_status_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_unique_status()", 0, gearman_client_unique_status_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task_status_by_unique()", 0, gearman_client_add_task_status_by_unique_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_echo()", 0, gearman_client_echo_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_task_context_free_fn()", 0, gearman_client_set_task_context_free_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_task_free_all()", 0, gearman_client_task_free_all_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task()", 0, gearman_client_add_task_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task_high()", 0, gearman_client_add_task_high_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task_low()", 0, gearman_client_add_task_low_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task_background()", 0, gearman_client_add_task_background_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task_high_background()", 0, gearman_client_add_task_high_background_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task_low_background()", 0, gearman_client_add_task_low_background_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_add_task_status()", 0, gearman_client_add_task_status_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_workload_fn()", 0, gearman_client_set_workload_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_created_fn()", 0, gearman_client_set_created_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_status_fn()", 0, gearman_client_set_status_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_complete_fn()", 0, gearman_client_set_complete_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_exception_fn()", 0, gearman_client_set_exception_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_fail_fn()", 0, gearman_client_set_fail_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_clear_fn()", 0, gearman_client_clear_fn_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_run_tasks()", 0, gearman_client_run_tasks_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_compare()", 0, gearman_client_compare_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_server_option()", 0, gearman_client_set_server_option_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_namespace()", 0, gearman_client_set_namespace_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_client_set_identifier()", 0, gearman_client_set_identifier_GEARMAN_INVALID_ARGUMENT_TEST },
+  {0, 0, 0}
+};
+
+test_st gearman_task_st_GEARMAN_INVALID_ARGUMENT_TESTS[] ={
+  {"gearman_task_free()", 0, gearman_task_free_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_context()", 0, gearman_task_context_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_set_context()", 0, gearman_task_set_context_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_function_name()", 0, gearman_task_function_name_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_unique()", 0, gearman_task_unique_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_job_handle()", 0, gearman_task_job_handle_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_is_known()", 0, gearman_task_is_known_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_is_running()", 0, gearman_task_is_running_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_numerator()", 0, gearman_task_numerator_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_denominator()", 0, gearman_task_denominator_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_give_workload()", 0, gearman_task_give_workload_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_send_workload()", 0, gearman_task_send_workload_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_data()", 0, gearman_task_data_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_data_size()", 0, gearman_task_data_size_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_take_data()", 0, gearman_task_take_data_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_recv_data()", 0, gearman_task_recv_data_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_error()", 0, gearman_task_error_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_result()", 0, gearman_task_result_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_return()", 0, gearman_task_return_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_task_strstate()", 0, gearman_task_strstate_GEARMAN_INVALID_ARGUMENT_TEST },
+  {0, 0, 0}
+};
+
+test_st gearman_job_st_GEARMAN_INVALID_ARGUMENT_TESTS[] ={
+  {"gearman_job_free()", 0, gearman_job_free_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_send_data()", 0, gearman_job_send_data_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_send_warning()", 0, gearman_job_send_warning_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_send_statu()", 0, gearman_job_send_status_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_send_complete()", 0, gearman_job_send_complete_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_send_exception()", 0, gearman_job_send_exception_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_send()", 0, gearman_job_send_fail_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_handle()", 0, gearman_job_handle_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_function_name()", 0, gearman_job_function_name_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_unique()", 0, gearman_job_unique_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_workload()", 0, gearman_job_workload_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_workload_size()", 0, gearman_job_workload_size_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_take_workload()", 0, gearman_job_take_workload_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_clone_worker()", 0, gearman_job_clone_worker_GEARMAN_INVALID_ARGUMENT_TEST },
+  {"gearman_job_error()", 0, gearman_job_error_GEARMAN_INVALID_ARGUMENT_TEST },
+  {0, 0, 0}
+};
+
 test_st gearman_client_set_identifier_TESTS[] ={
   {"gearman_client_set_identifier()", 0, gearman_client_set_identifier_TEST },
   {"gearman_client_set_identifier(with_work)", 0, gearman_client_set_identifier_plus_work_TEST },
   {"gearman_client_set_identifier(RANDOM)", 0, gearman_client_set_identifier_plus_random_TEST },
+  {0, 0, 0}
+};
+
+test_st gearman_client_cancel_job_TESTS[] ={
+  {"gearman_client_cancel_job()", 0, gearman_client_cancel_job_TEST },
   {0, 0, 0}
 };
 
@@ -1502,6 +2236,7 @@ test_st gearman_client_st_init_TESTS[] ={
   {"allocation", 0, allocation_test },
   {"clone_test", 0, clone_test },
   {"echo", 0, echo_test },
+  {"gearman_client_set_log_fn", 0, gearman_client_set_log_fn_TEST },
   {"options", 0, option_test },
   {0, 0, 0}
 };
@@ -1678,8 +2413,15 @@ test_st limit_tests[] ={
 
 collection_st collection[] ={
   {"gearman_return_t", 0, 0, gearman_return_t_TESTS},
+  {"init", 0, 0, gearman_client_st_init_TESTS},
+  {"gearman_client_cancel_job()", 0, 0, gearman_client_cancel_job_TESTS },
+  {"gearman_client_st GEARMAN_INVALID_ARGUMENT", 0, 0, gearman_client_st_GEARMAN_INVALID_ARGUMENT_TESTS },
+  {"gearman_task_st GEARMAN_INVALID_ARGUMENT", 0, 0, gearman_task_st_GEARMAN_INVALID_ARGUMENT_TESTS },
+  {"gearman_job_st GEARMAN_INVALID_ARGUMENT", 0, 0, gearman_job_st_GEARMAN_INVALID_ARGUMENT_TESTS },
   {"gearman_id_t", 0, 0, gearman_id_t_TESTS},
   {"gearman_strerror()", 0, 0, gearman_strerror_tests },
+  {"gearman_client_st init", 0, 0, gearman_client_st_init_TESTS },
+  {"gearman_client_add_server()", 0, 0, gearman_client_add_server_TESTS },
   {"gearman_client_st", default_v2_SETUP, 0, gearman_client_st_TESTS},
   {"gearman_client_st chunky", chunk_v1_SETUP, 0, gearman_client_st_TESTS}, // Test with a worker that will respond in part
   {"gearman_task_add_task() v1 workers", default_v1_SETUP, 0, gearman_task_tests},

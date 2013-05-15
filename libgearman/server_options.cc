@@ -42,17 +42,44 @@
  */
 
 #include "gear_config.h"
-#include <libgearman/common.h>
 
-#include "libgearman/server_options.hpp"
+#include "libgearman/common.h"
 
-gearman_server_options_st::gearman_server_options_st(gearman_universal_st &universal_arg,
+#include <memory>
+
+bool gearman_request_option(gearman_universal_st &universal,
+                            gearman_string_t &option)
+{
+  // Since we append to universal when we build the options, the below is not a memory leak.
+  gearman_server_options_st *server_options = new (std::nothrow) gearman_server_options_st(universal, gearman_c_str(option), gearman_size(option));
+  if (server_options == NULL)
+  {
+    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "new gearman_server_options_st()");
+    return false;
+  }
+
+  return true;
+}
+
+gearman_server_options_st::gearman_server_options_st(gearman_universal_st &universal_,
                                                      const char* option_arg, const size_t option_arg_size) : 
-  next(NULL),
-  prev(NULL),
-  option(option_arg), 
-  option_length(option_arg_size),
-  universal(universal_arg)
+  _option(option_arg_size),
+  next(NULL), prev(NULL),
+  universal(universal_)
+{
+  _option.append(option_arg, option_arg_size);
+  if (universal.server_options_list)
+  {
+    universal.server_options_list->prev= this;
+  }
+  next= universal.server_options_list;
+  universal.server_options_list= this;
+}
+
+gearman_server_options_st::gearman_server_options_st(const gearman_server_options_st& copy) :
+  _option(copy.option()),
+  next(NULL), prev(NULL),
+  universal(copy.universal)
 {
   if (universal.server_options_list)
   {
@@ -64,11 +91,6 @@ gearman_server_options_st::gearman_server_options_st(gearman_universal_st &unive
 
 gearman_server_options_st::~gearman_server_options_st()
 {
-  if (option)
-  {
-    free((void*)option);
-  }
-
   { // Remove from universal list
     if (universal.server_options_list == this)
     {

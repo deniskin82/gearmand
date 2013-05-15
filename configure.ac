@@ -1,5 +1,5 @@
 # Gearman server and library
-# Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day, Monty Taylor
 # All rights reserved.
 #
@@ -8,7 +8,7 @@
 
 AC_REVISION([m4_esyscmd_s([bzr revno])])
 AC_PREREQ([2.63])
-AC_INIT([gearmand],[1.1.5],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[1.1.7],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -40,6 +40,9 @@ LT_PREREQ([2.2])
 LT_INIT([disable-static])
 LT_LANG([C++])
 
+AC_PROG_CC_C99
+AS_IF([test "x${ac_cv_prog_cc_c99}" == "xno"],[AC_MSG_ERROR([No c99 compatible compiler found])])
+
 AX_PLATFORM
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 AX_ASSERT
@@ -67,7 +70,7 @@ AC_DEFINE([HAVE_GEARMAND_BINARY],[1],[gearmand binary was found])
 AC_DEFUN([CHECK_CURL],
          [AX_LIB_CURL([7.21.7],
                       [AX_CHECK_LIBRARY([LIBCURL],[curl/curl.h],[curl])],
-                      [AC_DEFINE([HAVE_LIBCURL],[1],[Have the LIBCURL library])
+                      [AC_DEFINE([HAVE_LIBCURL],[0],[Have the LIBCURL library])
                       ])
          ])
 CHECK_CURL
@@ -92,12 +95,19 @@ FCNTL_FLAGS
 AX_ENABLE_LIBHIREDIS
 
 # Checks for programs.
+AC_CHECK_PROGS([DPKG_GENSYMBOLS],[dpkg-gensymbols])
+AC_CHECK_PROGS([PERL],[perl])
 AC_CHECK_PROGS([VALGRIND],['valgrind'])
+AC_CHECK_PROGS([WINE],['wine'])
+AC_PATH_PROG([GPERF],['gperf'])
 AC_PROG_AWK
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-AX_PROG_SPHINX_BUILD
+AX_PROG_MEMCACHED
+AX_PROG_SPHINX_BUILD(,[AC_MSG_WARN([sphinx-build version 1.0 or greater is required to build man pages])])
+AX_WITH_PROG([LCOV],[lcov])
+AX_WITH_PROG([LCOV_GENHTML],[genhtml])
 
 # Checks for header files.
 AC_HEADER_STDC

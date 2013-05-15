@@ -48,6 +48,9 @@
 #include "libgearman/assert.hpp"
 #include "libgearman/interface/push.hpp"
 #include "libgearman/server_options.hpp"
+#include "libgearman/log.hpp"
+#include "libgearman/vector.h"
+#include "libgearman/uuid.hpp"
 
 #include <cerrno>
 #include <cstdarg>
@@ -94,27 +97,31 @@ void gearman_universal_clone(gearman_universal_st &destination, const gearman_un
     destination.wakeup_fd[1]= wakeup_fd[1];
   }
 
-  (void)gearman_universal_set_option(destination, GEARMAN_NON_BLOCKING, source.options.non_blocking);
+  (void)gearman_universal_set_option(destination, GEARMAN_UNIVERSAL_NON_BLOCKING, source.options.non_blocking);
 
   destination.timeout= source.timeout;
 
   destination._namespace= gearman_string_clone(source._namespace);
+  destination._identifier= gearman_string_clone(source._identifier);
+  destination.verbose= source.verbose;
+  destination.log_fn= source.log_fn;
+  destination.log_context= source.log_context;
 
   for (gearman_connection_st *con= source.con_list; con; con= con->next)
   {
     if (gearman_connection_copy(destination, *con) == NULL)
     {
-      gearman_universal_free(destination);
       return;
     }
   }
+
+  assert(destination.con_count == source.con_count);
 }
 
 void gearman_universal_free(gearman_universal_st &universal)
 {
   gearman_free_all_cons(universal);
   gearman_free_all_packets(universal);
-  gearman_string_free(universal._namespace);
 
   if (universal.pfds)
   {
@@ -130,18 +137,34 @@ void gearman_universal_free(gearman_universal_st &universal)
   }
 }
 
-gearman_return_t gearman_universal_set_option(gearman_universal_st &self, gearman_universal_options_t option, bool value)
+gearman_return_t gearman_universal_set_option(gearman_universal_st &self, universal_options_t option, bool value)
 {
   switch (option)
   {
-  case GEARMAN_NON_BLOCKING:
+  case GEARMAN_UNIVERSAL_NON_BLOCKING:
     self.options.non_blocking= value;
     break;
 
-  case GEARMAN_DONT_TRACK_PACKETS:
+  case GEARMAN_UNIVERSAL_DONT_TRACK_PACKETS:
     break;
 
-  case GEARMAN_MAX:
+  case GEARMAN_UNIVERSAL_IDENTIFY:
+    if (value)
+    {
+      if (self._identifier == NULL)
+      {
+        self._identifier= gearman_string_create_guid();
+      }
+      assert(self._identifier);
+    }
+    else
+    {
+      gearman_string_free(self._identifier);
+      self._identifier= NULL;
+    }
+    break;
+
+  case GEARMAN_UNIVERSAL_MAX:
   default:
     return GEARMAN_INVALID_COMMAND;
   }
@@ -165,6 +188,8 @@ void gearman_set_log_fn(gearman_universal_st &self, gearman_log_fn *function,
   self.log_fn= function;
   self.log_context= context;
   self.verbose= verbose;
+  
+  gearman_log_debug(self, "Enabled logging");
 }
 
 void gearman_set_workload_malloc_fn(gearman_universal_st& universal,
@@ -370,6 +395,43 @@ gearman_connection_st *gearman_ready(gearman_universal_st& universal)
   return NULL;
 }
 
+gearman_return_t gearman_universal_st::option(const universal_options_t& option_, bool value)
+{
+  switch (option_)
+  {
+    case GEARMAN_UNIVERSAL_NON_BLOCKING:
+      non_blocking(value);
+      break;
+
+    case GEARMAN_UNIVERSAL_DONT_TRACK_PACKETS:
+      break;
+
+    case GEARMAN_UNIVERSAL_IDENTIFY:
+      _identifier= gearman_string_create_guid();
+      assert(_identifier);
+      break;
+
+    case GEARMAN_UNIVERSAL_MAX:
+    default:
+      return GEARMAN_INVALID_COMMAND;
+  }
+
+  return GEARMAN_SUCCESS;
+}
+
+void gearman_universal_st::identifier(const char *identifier_, const size_t identifier_size_)
+{
+  gearman_string_free(_identifier);
+  if (identifier_ and identifier_size_)
+  {
+    _identifier= gearman_string_create(NULL, identifier_, identifier_size_);
+  }
+  else
+  {
+    _identifier= NULL;
+  }
+}
+
 gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
                                         const char *id, size_t id_size)
 {
@@ -396,64 +458,11 @@ gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
     }
   }
 
-  gearman_packet_st packet;
-  gearman_return_t ret= gearman_packet_create_args(universal, packet, GEARMAN_MAGIC_REQUEST,
-                                                   GEARMAN_COMMAND_SET_CLIENT_ID,
-                                                   (const void**)&id, &id_size, 1);
-  if (gearman_success(ret))
+  universal.identifier(id, id_size);
+
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
   {
-    PUSH_BLOCKING(universal);
-
-    for (gearman_connection_st *con= universal.con_list; con; con= con->next)
-    {
-      gearman_return_t local_ret= con->send_packet(packet, true);
-      if (gearman_failed(local_ret))
-      {
-        ret= local_ret;
-      }
-
-    }
-  }
-
-  gearman_packet_free(&packet);
-
-  return ret;
-}
-
-EchoCheck::EchoCheck(gearman_universal_st& universal_,
-    const void *workload_, const size_t workload_size_) :
-    _universal(universal_),
-    _workload(workload_),
-    _workload_size(workload_size_)
-{
-}
-
-gearman_return_t EchoCheck::success(gearman_connection_st* con)
-{
-  if (con->_packet.command != GEARMAN_COMMAND_ECHO_RES)
-  {
-    return gearman_error(_universal, GEARMAN_INVALID_COMMAND, "Wrong command sent in response to ECHO request");
-  }
-
-  if (con->_packet.data_size != _workload_size or
-      memcmp(_workload, con->_packet.data, _workload_size))
-  {
-    return gearman_error(_universal, GEARMAN_ECHO_DATA_CORRUPTION, "corruption during echo");
-  }
-
-  return GEARMAN_SUCCESS;
-}
-
-OptionCheck::OptionCheck(gearman_universal_st& universal_):
-    _universal(universal_)
-{
-}
-
-gearman_return_t OptionCheck::success(gearman_connection_st* con)
-{
-  if (con->_packet.command == GEARMAN_COMMAND_ERROR)
-  {
-    return gearman_error(_universal, GEARMAN_INVALID_SERVER_OPTION, "invalid server option");
+    con->send_identifier();
   }
 
   return GEARMAN_SUCCESS;
@@ -536,6 +545,11 @@ gearman_return_t gearman_echo(gearman_universal_st& universal,
     return gearman_error(universal, GEARMAN_ARGUMENT_TOO_LARGE,  "workload_size was greater then GEARMAN_MAX_ECHO_SIZE");
   }
 
+  if (universal.has_connections() == false)
+  {
+    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
+  }
+
   gearman_packet_st message;
   gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
                                                    GEARMAN_COMMAND_ECHO_REQ,
@@ -559,28 +573,44 @@ gearman_return_t gearman_echo(gearman_universal_st& universal,
   return ret;
 }
 
-bool gearman_request_option(gearman_universal_st &universal,
-                            gearman_string_t &option)
+gearman_return_t cancel_job(gearman_universal_st& universal,
+                            gearman_job_handle_t job_handle)
 {
-  char* option_str_cpy = (char*) malloc(gearman_size(option));
-
-  if (option_str_cpy == NULL)
+  if (universal.has_connections() == false)
   {
-    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "malloc()");
-    return false;
+    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
   }
 
-  strncpy(option_str_cpy, gearman_c_str(option), gearman_size(option));
+  const void *args[1];
+  size_t args_size[1];
 
-  gearman_server_options_st *server_options = new (std::nothrow) gearman_server_options_st(universal, option_str_cpy, gearman_size(option));
-  if (server_options == NULL)
+  args[0]= job_handle;
+  args_size[0]= strlen(job_handle);
+
+  gearman_packet_st cancel_packet;
+
+  gearman_return_t ret= gearman_packet_create_args(universal,
+                                                   cancel_packet,
+                                                   GEARMAN_MAGIC_REQUEST,
+                                                   GEARMAN_COMMAND_WORK_FAIL,
+                                                   args, args_size, 1);
+  if (gearman_success(ret))
   {
-    free(option_str_cpy);
-    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "new gearman_server_options_st()");
-    return false;
+    PUSH_BLOCKING(universal);
+
+    CancelCheck check(universal);
+    ret= connection_loop(universal, cancel_packet, check);
+  }
+  else
+  {
+    gearman_packet_free(&cancel_packet);
+    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
+    return ret;
   }
 
-  return true;
+  gearman_packet_free(&cancel_packet);
+
+  return ret;
 }
 
 void gearman_free_all_packets(gearman_universal_st &universal)
@@ -605,7 +635,14 @@ gearman_id_t gearman_universal_id(gearman_universal_st &universal)
 void gearman_universal_set_namespace(gearman_universal_st& universal, const char *namespace_key, size_t namespace_key_size)
 {
   gearman_string_free(universal._namespace);
-  universal._namespace= gearman_string_create(NULL, namespace_key, namespace_key_size);
+  if (namespace_key)
+  {
+    universal._namespace= gearman_string_create(NULL, namespace_key, namespace_key_size);
+  }
+  else
+  {
+    universal._namespace= NULL;
+  }
 }
 
 const char *gearman_univeral_namespace(gearman_universal_st& universal)

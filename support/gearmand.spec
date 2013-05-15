@@ -1,6 +1,6 @@
 Summary: Gearman Server and C Library
 Name: gearmand
-Version: 1.1.5
+Version: 1.1.7
 Release: 1
 License: BSD
 Group: System Environment/Libraries
@@ -121,6 +121,7 @@ fi
 %{_includedir}/libgearman-1.0/aggregator.h
 %{_includedir}/libgearman-1.0/allocator.h
 %{_includedir}/libgearman-1.0/argument.h
+%{_includedir}/libgearman-1.0/cancel.h
 %{_includedir}/libgearman-1.0/client.h
 %{_includedir}/libgearman-1.0/client_callbacks.h
 %{_includedir}/libgearman-1.0/configure.h

@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -169,8 +169,7 @@ gearman_connection_st *gearman_connection_create(gearman_universal_st &universal
   gearman_connection_st *connection= new (std::nothrow) gearman_connection_st(universal, options);
   if (connection == NULL)
   {
-    gearman_perror(universal, "gearman_connection_st new");
-    return NULL;
+    gearman_perror(universal, "Failed at new() gearman_connection_st new");
   }
 
   return connection;
@@ -280,47 +279,51 @@ void gearman_connection_st::free_private_packet()
  * Public Definitions
  */
 
-void gearman_connection_st::set_host(const char *host_, const in_port_t port_)
+void gearman_connection_st::set_host(const char *host_, const in_port_t& port_)
 {
-  reset_addrinfo();
-
-  if (host_ == NULL)
+  if (port_ < 1)
   {
-    strncpy(_host, GEARMAN_DEFAULT_TCP_HOST, GEARMAN_NI_MAXHOST);
+    set_host(host_, GEARMAN_DEFAULT_TCP_PORT_STRING);
   }
   else
   {
-    strncpy(_host, host_, GEARMAN_NI_MAXHOST);
-  }
-  _host[GEARMAN_NI_MAXHOST - 1]= 0;
+    snprintf(_service, sizeof(_service), "%hu", uint16_t(port_));
+    _service[GEARMAN_NI_MAXSERV - 1]= 0;
 
-  snprintf(_service, sizeof(_service), "%hu", uint16_t(port_));
-  _service[GEARMAN_NI_MAXSERV - 1]= 0;
+    set_host(host_, _service);
+  }
 }
 
 void gearman_connection_st::set_host(const char *host_, const char* service_)
 {
   reset_addrinfo();
 
-  if (host_ == NULL)
-  {
-    strncpy(_host, GEARMAN_DEFAULT_TCP_HOST, GEARMAN_NI_MAXHOST);
-  }
+  if (host_ and host_[0])
+  { }
   else
   {
-    strncpy(_host, host_, GEARMAN_NI_MAXHOST);
+    host_= GEARMAN_DEFAULT_TCP_HOST;
   }
+  strncpy(_host, host_, GEARMAN_NI_MAXHOST);
   _host[GEARMAN_NI_MAXHOST - 1]= 0;
 
-  if (service_)
+  if (service_ != _service)
   {
-    strcpy(_service, service_);
+    if (service_)
+    {
+      size_t string_len= strlen(service_);
+      if (string_len == 0)
+      {
+        service_= GEARMAN_DEFAULT_TCP_PORT_STRING;
+      }
+    }
+    else
+    {
+      service_= GEARMAN_DEFAULT_TCP_PORT_STRING;
+    }
+    strncpy(_service, service_, GEARMAN_NI_MAXSERV);
+    _service[GEARMAN_NI_MAXSERV - 1]= 0;
   }
-  else
-  {
-    strcpy(_service, GEARMAN_DEFAULT_TCP_PORT_STRING);
-  }
-  _service[GEARMAN_NI_MAXSERV - 1]= 0;
 }
 
 /*
@@ -390,6 +393,42 @@ void gearman_connection_st::reset_addrinfo()
   addrinfo_next= NULL;
 }
 
+gearman_return_t gearman_connection_st::send_identifier(void)
+{
+  if (universal._identifier)
+  {
+    options.identifier_sent= false;
+    const void* id= (void*)universal._identifier->value();
+    size_t id_size= universal._identifier->size();
+
+    gearman_packet_st packet;
+    gearman_return_t ret= gearman_packet_create_args(universal, packet, GEARMAN_MAGIC_REQUEST, GEARMAN_COMMAND_SET_CLIENT_ID, (const void**)&id, &id_size, 1);
+
+    if (gearman_success(ret))
+    {
+      PUSH_BLOCKING(universal);
+
+      options.identifier_sent= true;
+      gearman_return_t local_ret= send_packet(packet, true);
+      if (gearman_failed(local_ret))
+      {
+        options.identifier_sent= false;
+        ret= local_ret;
+      }
+      else
+      {
+        options.identifier_sent= true;
+      }
+    }
+
+    gearman_packet_free(&packet);
+
+    return ret;
+  }
+
+  return GEARMAN_SUCCESS;
+}
+
 
 /*
  * The send_packet() method does not only send the passed-in packet_arg. If there are any server options
@@ -402,15 +441,25 @@ void gearman_connection_st::reset_addrinfo()
  */
 gearman_return_t gearman_connection_st::send_packet(const gearman_packet_st& packet_arg, const bool flush_buffer)
 {
-  if (!options.server_options_sent)
+  if (options.identifier_sent == false)
+  {
+    gearman_return_t ret= send_identifier();
+    if (gearman_failed(ret))
+    {
+      return ret;
+    }
+    options.identifier_sent= true;
+  }
+
+  if (options.server_options_sent == false)
   {
     for (gearman_server_options_st* head= universal.server_options_list;
          head;
          head= head->next)
     {
       gearman_packet_st message;
-      const void *args[]= { head->option };
-      size_t args_size[]= { head->option_length };
+      const void *args[]= { (const void*)head->value() };
+      size_t args_size[]= { head->size() };
       gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
                                                        GEARMAN_COMMAND_OPTION_REQ, args, args_size, 1);
 

@@ -3,7 +3,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -39,65 +39,94 @@
 #pragma once
 
 #include "libgearman/assert.hpp"
+#include "libgearman/vector.hpp"
+#include "libgearman-1.0/return.h"
+
+#include <cstddef>
+#include <cstdlib>
 #include <cstring>
+
+enum gearman_result_t {
+  GEARMAN_RESULT_BINARY,
+  GEARMAN_RESULT_BOOLEAN,
+  GEARMAN_RESULT_INTEGER,
+  GEARMAN_RESULT_NULL
+};
 
 struct gearman_result_st
 {
-  bool _is_null;
-  enum gearman_result_t type;
+  enum gearman_result_t _type;
 
-  union {
-    bool boolean;
-    int64_t integer;
+  struct Value {
+    bool _boolean;
+    int64_t _integer;
     gearman_vector_st string;
+
+    Value() :
+      _boolean(false),
+      _integer(0),
+      string()
+    { }
+
+    Value(size_t initial_size) :
+      _boolean(false),
+      _integer(0),
+      string(initial_size)
+    { }
+
   } value;
 
   gearman_result_st();
 
-  explicit gearman_result_st(size_t initial_size);
+  explicit gearman_result_st(size_t);
 
   bool is_null() const
   {
-    return _is_null;
-  }
-
-  void reserve(size_t reserve_size)
-  {
-    if (type == GEARMAN_RESULT_BINARY)
-    {
-      gearman_string_reserve(&value.string, reserve_size);
-    }
-    else
-    {
-      type= GEARMAN_RESULT_BINARY;
-      gearman_string_create(&value.string, reserve_size);
-      _is_null= true;
-    }
+    return _type == GEARMAN_RESULT_NULL;
   }
 
   void clear()
   {
-    switch (type)
-    {
-    case GEARMAN_RESULT_BINARY:
-      value.string.clear();
-      break;
-
-    case GEARMAN_RESULT_INTEGER:
-      value.integer= 0;
-      break;
-
-    case GEARMAN_RESULT_BOOLEAN:
-      value.boolean= false;
-      break;
-    }
-
-    _is_null= true;
+    value.string.clear();
+    value._integer= 0;
+    value._boolean= false;
+    _type= GEARMAN_RESULT_NULL;
   }
 
-  gearman_vector_st *string()
+  bool store(const gearman_string_t&);
+  bool store(const char*, const size_t);
+  bool store(int64_t);
+  bool append(const char*, const size_t);
+
+  size_t size() const;
+
+  size_t capacity() const
   {
-    if (type == GEARMAN_RESULT_BINARY)
+    return value.string.capacity();
+  }
+
+  bool resize(size_t arg_)
+  {
+    return value.string.resize(arg_);
+  }
+
+  bool reserve(size_t arg_)
+  {
+    return value.string.reserve(arg_);
+  }
+
+  gearman_vector_st *mutable_string()
+  {
+    value._integer= 0;
+    value._boolean= false;
+    _type= GEARMAN_RESULT_BINARY;
+
+    return &value.string;
+  }
+
+  const gearman_vector_st *string() const
+  {
+    if (_type == GEARMAN_RESULT_BINARY)
     {
       return &value.string;
     }
@@ -105,19 +134,39 @@ struct gearman_result_st
     return NULL;
   }
 
-  int64_t integer()
+  bool boolean(bool arg_)
   {
-    if (type == GEARMAN_RESULT_INTEGER)
+    if (_type != GEARMAN_RESULT_BOOLEAN)
     {
-      return value.integer;
+      clear();
+      _type= GEARMAN_RESULT_BOOLEAN;
     }
 
-    return 0;
+    value._boolean= arg_;
+
+    return true;
   }
 
-  ~gearman_result_st();
+  bool boolean() const;
+
+  int64_t integer() const;
+  bool integer(int64_t);
+
+  gearman_string_t take();
+
+  bool is_type(gearman_result_t arg)
+  {
+    return _type == arg;
+  }
+
+  ~gearman_result_st()
+  {
+  }
 
 private:
   gearman_result_st( const gearman_result_st& );
   const gearman_result_st& operator=( const gearman_result_st& );
 };
+
+
+gearman_string_t gearman_result_take_string(gearman_result_st *self);
