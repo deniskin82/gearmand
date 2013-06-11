@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -37,32 +37,13 @@
 
 #pragma once
 
-namespace bin {
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+# include <cyassl/ssl.h>
+#endif
 
-class Worker
-{
-public:
-  Worker() :
-    _worker()
-  {
-    if (gearman_worker_create(&_worker) == NULL)
-    {
-      std::cerr << "Failed memory allocation while initializing memory." << std::endl;
-      abort();
-    }
-  }
+#include "configmake.h"
 
-  ~Worker()
-  {
-    gearman_worker_free(&_worker);
-  }
+#define CA_CERT_PEM GEARMAND_CA_CERTIFICATE
+#define CERT_PEM GEARMAND_CLIENT_PEM
+#define CERT_KEY_PEM GEARMAND_CLIENT_PEM
 
-  gearman_worker_st &worker()
-  {
-    return _worker;
-  }
-
-private:
-  gearman_worker_st _worker;
-};
-} //namespace bin

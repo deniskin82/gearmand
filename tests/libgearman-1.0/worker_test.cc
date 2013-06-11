@@ -60,8 +60,11 @@ using namespace libtest;
 using namespace org::gearmand;
 
 #include "tests/start_worker.h"
+#include "tests/workers/v2/call_exception.h"
 #include "tests/workers/v2/echo_or_react.h"
 #include "tests/workers/v2/echo_or_react_chunk.h"
+#include "tests/workers/v2/call_exception.h"
+#include "tests/workers/v2/check_order.h"
 
 static test_return_t init_test(void *)
 {
@@ -171,6 +174,13 @@ static test_return_t gearman_worker_errno_no_error_TEST(void *)
 static test_return_t gearman_worker_options_TEST(void *)
 {
   ASSERT_EQ(gearman_worker_options_t(), gearman_worker_options(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_worker_set_log_fn_TEST(void *)
+{
+  gearman_worker_set_log_fn(NULL, NULL, NULL, GEARMAN_VERBOSE_MAX);
 
   return TEST_SUCCESS;
 }
@@ -404,6 +414,74 @@ static test_return_t gearman_worker_add_server_GEARMAN_GETADDRINFO_TEST(void *)
   return TEST_SUCCESS;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunsafe-loop-optimizations"
+static test_return_t job_order_TEST(void *)
+{
+  libgearman::Client client(libtest::default_port());;
+  ASSERT_EQ(true, gearman_client_set_server_option(&client, test_literal_param("exceptions")));
+  gearman_client_add_options(&client, GEARMAN_CLIENT_EXCEPTION);
+  gearman_client_add_options(&client, GEARMAN_CLIENT_GENERATE_UNIQUE);
+
+  std::vector<gearman_task_st*> tasks;
+  const uint32_t order_seed= __LINE__;
+  uint32_t spaces= 0;
+  for (uint32_t x= order_seed +10; x != order_seed; --x)
+  {
+    gearman_return_t ret;
+    char buffer[30];
+    memset(buffer, 0, sizeof(buffer));
+    int buffer_length= snprintf(buffer, sizeof(buffer), "%u", x);
+    for (uint32_t y= 0; y <= spaces; ++y)
+    {
+      buffer[buffer_length +y]= ' ';
+    }
+    ++spaces;
+    gearman_task_st* task= gearman_client_add_task(&client,
+                                                   NULL, // task
+                                                   NULL, // context
+                                                   __func__, // function_name,
+                                                   NULL, // unique
+                                                   buffer, // workload
+                                                   size_t(buffer_length +1 +spaces), // length of workload
+                                                   &ret);
+    ASSERT_EQ(GEARMAN_SUCCESS, ret);
+    ASSERT_TRUE(task);
+    tasks.push_back(task);
+  }
+
+  uint32_t order_context= order_seed +1;
+  gearman_function_t check_order_worker_TEST_FN= gearman_function_create(check_order_worker);
+  std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(),
+                                                           NULL,
+                                                           __func__,
+                                                           check_order_worker_TEST_FN,
+                                                           (void*)&order_context,
+                                                           gearman_worker_options_t(),
+                                                           0)); // timeout
+
+  {
+    gearman_return_t ret;
+    do {
+      ret= gearman_client_run_tasks(&client);
+    } while (gearman_continue(ret));
+    ASSERT_EQ(GEARMAN_SUCCESS, ret);
+  }
+
+  for (std::vector<gearman_task_st*>::iterator iter= tasks.begin();
+       iter != tasks.end(); ++iter)
+  {
+    if (gearman_task_return(*iter) != GEARMAN_SUCCESS)
+    {
+      Error << gearman_task_error(*iter);
+    }
+    ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(*iter));
+  }
+
+  return TEST_SUCCESS;
+}
+#pragma GCC diagnostic pop
+
 static test_return_t echo_max_test(void *)
 {
   libgearman::Worker worker(libtest::default_port());;
@@ -606,6 +684,87 @@ static test_return_t GEARMAN_FAIL_return_TEST(void *)
   return TEST_SUCCESS;
 }
 
+static test_return_t gearman_job_send_exception_mass_TEST(void *)
+{
+  gearman_function_t call_exception_WORKER_FN= gearman_function_create(call_exception_WORKER);
+  std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(),
+                                                           NULL,
+                                                           "exception",
+                                                           call_exception_WORKER_FN,
+                                                           NULL,
+                                                           gearman_worker_options_t(),
+                                                           0)); // timeout
+
+  std::vector<gearman_task_st*> tasks;
+  libgearman::Client client(libtest::default_port());
+  for (size_t x= 0; x < 100; ++x)
+  {
+    char buffer[GEARMAN_MAXIMUM_INTEGER_DISPLAY_LENGTH];
+    int buffer_length= snprintf(buffer, sizeof(buffer), "%d", int(x));
+    gearman_return_t ret;
+    gearman_task_st *task= gearman_client_add_task(&client,
+                                                   NULL, // preallocated task
+                                                   NULL, // context 
+                                                   "exception", // function
+                                                   NULL, // unique
+                                                   (const void*)buffer, size_t(buffer_length), // workload
+                                                   &ret);
+    ASSERT_EQ(ret, GEARMAN_SUCCESS);
+    ASSERT_TRUE(task);
+
+    tasks.push_back(task);
+  }
+
+  {
+    gearman_return_t ret;
+    do {
+      ret= gearman_client_run_tasks(&client);
+    } while (gearman_continue(ret));
+  }
+
+  for (std::vector<gearman_task_st*>::iterator iter= tasks.begin();
+       iter != tasks.end(); ++iter)
+  {
+    ASSERT_EQ(GEARMAN_WORK_FAIL, gearman_task_return(*iter));
+  }
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_job_send_exception_TEST(void *)
+{
+  libgearman::Client client(libtest::default_port());
+  libgearman::Worker worker(libtest::default_port());
+
+  ASSERT_EQ(true, gearman_client_set_server_option(&client, test_literal_param("exceptions")));
+
+  gearman_function_t exception_WORKER_FN= gearman_function_create(exception_WORKER);
+  std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(),
+                                                           NULL,
+                                                           __func__,
+                                                           exception_WORKER_FN,
+                                                           NULL,
+                                                           gearman_worker_options_t(),
+                                                           0)); // timeout
+
+  gearman_return_t ret;
+  gearman_task_st *task= gearman_client_add_task(&client, NULL, NULL,
+                                                 __func__, NULL, "dog", 3,
+                                                 &ret);
+  ASSERT_TRUE(task);
+  ASSERT_EQ(ret, GEARMAN_SUCCESS);
+
+  do {
+    ret= gearman_client_run_tasks(&client);
+  } while (gearman_continue(ret));
+
+  gearman_string_t exception= gearman_task_exception(task);
+  ASSERT_EQ(gearman_task_return(task), GEARMAN_WORK_EXCEPTION);
+  ASSERT_STREQ("dog", gearman_c_str(exception));
+
+  return TEST_SUCCESS;
+}
+
 static test_return_t gearman_client_job_status_is_known_TEST(void *)
 {
   libgearman::Client client(libtest::default_port());
@@ -795,6 +954,32 @@ static test_return_t gearman_worker_add_function_test(void *)
   /* Make sure we have removed it */
   ASSERT_EQ(GEARMAN_NO_REGISTERED_FUNCTION, 
                gearman_worker_unregister(&worker, function_name));
+
+  return TEST_SUCCESS;
+}
+
+static void log_callback(const char *, gearman_verbose_t, void *context)
+{
+  uint32_t *counter= (uint32_t*)context;
+
+  *counter= *counter +1;
+}
+
+static test_return_t gearman_worker_timeout_TEST(void *)
+{
+  libgearman::Worker worker(libtest::default_port());
+
+  ASSERT_EQ(GEARMAN_SUCCESS, 
+            gearman_worker_add_function(&worker, __func__, 0, fail_worker, NULL));
+
+  gearman_worker_set_timeout(&worker, 1000);
+
+  uint32_t counter= 0;
+  gearman_worker_set_log_fn(&worker, log_callback, &counter, GEARMAN_VERBOSE_ERROR);
+
+  gearman_return_t ret= gearman_worker_work(&worker);
+  ASSERT_EQ(ret, GEARMAN_TIMEOUT);
+  ASSERT_EQ(counter, 1);
 
   return TEST_SUCCESS;
 }
@@ -1233,6 +1418,7 @@ test_st worker_TESTS[] ={
   {"init", 0, init_test },
   {"allocation", 0, allocation_test },
   {"sanity", 0, sanity_TEST },
+  {"gearman_worker_timeout(1000)", 0, gearman_worker_timeout_TEST },
   {"gearman_worker_clone(NULL, NULL)", 0, gearman_worker_clone_NULL_NULL },
   {"gearman_worker_clone(NULL, source)", 0, gearman_worker_clone_NULL_SOURCE },
   {"gearman_worker_add_server(GEARMAN_GETADDRINFO)", false, gearman_worker_add_server_GEARMAN_GETADDRINFO_TEST },
@@ -1259,6 +1445,9 @@ test_st worker_TESTS[] ={
   {"gearman_client_run_tasks() GEARMAN_CLIENT_NON_BLOCKING", 0, gearman_client_run_tasks_increase_GEARMAN_CLIENT_NON_BLOCKING_TEST },
   {"gearman_client_run_tasks() chunked", 0, gearman_client_run_tasks_increase_chunk_TEST },
   {"gearman_client_job_status(is_known)", 0, gearman_client_job_status_is_known_TEST },
+  {"gearman_job_send_exception()", 0, gearman_job_send_exception_TEST },
+  {"gearman_job_send_exception(mass)", 0, gearman_job_send_exception_mass_TEST },
+  {"job order", 0, job_order_TEST },
   {"echo_max", 0, echo_max_test },
   {"abandoned_worker", 0, abandoned_worker_test },
   {0, 0, 0}
@@ -1276,6 +1465,7 @@ test_st gearman_worker_st_NULL_invocation_TESTS[] ={
   {"gearman_worker_errno()", 0, gearman_worker_errno_TEST },
   {"gearman_worker_errno() no error", 0, gearman_worker_errno_no_error_TEST },
   {"gearman_worker_options()", 0, gearman_worker_options_TEST },
+  {"gearman_worker_set_log_fn()", 0, gearman_worker_set_log_fn_TEST },
   {0, 0, 0}
 };
 

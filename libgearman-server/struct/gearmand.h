@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,9 @@
 #pragma once
 
 #include "libgearman-server/struct/server.h"
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+# include <cyassl/ssl.h>
+#endif
 
 #include "libgearman-server/struct/port.h"
 
@@ -133,6 +136,9 @@ struct gearmand_st
   gearman_server_st server;
   struct event wakeup_event;
   std::vector<gearmand_port_st> _port_list;
+  private:
+  struct CYASSL_CTX* _ctx_ssl;
+  public:
 
   gearmand_st(const char *host_,
               uint32_t threads_,
@@ -156,7 +162,8 @@ struct gearmand_st
     base(NULL),
     thread_list(NULL),
     thread_add_next(NULL),
-    free_dcon_list(NULL)
+    free_dcon_list(NULL),
+    _ctx_ssl(NULL)
   {
     if (host_)
     {
@@ -166,14 +173,31 @@ struct gearmand_st
     wakeup_fd[1]= -1;
   }
 
+  void init_ssl()
+  {
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+    CyaSSL_Init();
+    _ctx_ssl= CyaSSL_CTX_new(CyaSSLv23_server_method());
+#endif
+  }
+
+  struct CYASSL_CTX* ctx_ssl()
+  {
+    return _ctx_ssl;
+  }
+
   ~gearmand_st()
   {
     if (host)
     {
       free(host);
     }
+
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+    CyaSSL_CTX_free(_ctx_ssl);
+#endif
   }
-  
+
   bool exceptions() const
   {
     return _exceptions;

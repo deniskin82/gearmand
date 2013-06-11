@@ -433,6 +433,8 @@ bool Application::slurp()
   return data_was_read;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
 Application::error_t Application::join()
 {
   pid_t waited_pid= waitpid(_pid, &_status, 0);
@@ -531,6 +533,7 @@ Application::error_t Application::join()
 
   return _app_exit_state;
 }
+#pragma GCC diagnostic pop
 
 void Application::add_long_option(const std::string& name, const std::string& option_value)
 {
@@ -776,13 +779,26 @@ void Application::create_argv(const char *args[])
     vchar::append(built_argv, "--leak-check=yes");
 #if 0
     vchar::append(built_argv, "--show-reachable=yes"));
-#endif
     vchar::append(built_argv, "--track-fds=yes");
+#endif
 #if 0
     built_argv[x++]= strdup("--track-origin=yes");
 #endif
     vchar::append(built_argv, "--malloc-fill=A5");
     vchar::append(built_argv, "--free-fill=DE");
+    vchar::append(built_argv, "--xml=yes");
+    if (getenv("VALGRIND_HOME"))
+    {
+      libtest::vchar_t buffer;
+      buffer.resize(1024);
+      int length= snprintf(&buffer[0], buffer.size(), "--xml-file=%s/cmd-%%p.xml", getenv("VALGRIND_HOME"));
+      fatal_assert(length > 0 and size_t(length) < buffer.size());
+      vchar::append(built_argv, &buffer[0]);
+    }
+    else
+    {
+      vchar::append(built_argv, "--xml-file=valgrind-cmd-%p.xml");
+    }
 
     std::string log_file= create_tmpfile("valgrind");
     libtest::vchar_t buffer;

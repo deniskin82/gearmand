@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
   int opt_keepalive_interval;
   int opt_keepalive_count;
 
+
   boost::program_options::options_description general("General options");
 
   general.add_options()
@@ -385,7 +386,6 @@ int main(int argc, char *argv[])
   }
 
   gearmand_config_sockopt_keepalive(gearmand_config, opt_keepalive);
-
 
   gearmand_st *_gearmand= gearmand_create(gearmand_config,
                                           host.empty() ? NULL : host.c_str(),

@@ -42,6 +42,7 @@
  */
 
 #include "gear_config.h"
+#include "configmake.h"
 
 #include <libgearman-server/common.h>
 #include <libgearman/strcommand.h>
@@ -49,6 +50,10 @@
 
 #include <cstdio>
 #include <cstdlib>
+
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+# include <cyassl/ssl.h>
+#endif
 
 #include <libgearman-server/plugins/protocol/gear/protocol.h>
 #include "libgearman/command.h"
@@ -302,7 +307,36 @@ static Geartext gear_context;
 
 static gearmand_error_t _gear_con_add(gearman_server_con_st *connection)
 {
-  gearmand_info("Gear connection made");
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+  if (Gearmand()->ctx_ssl())
+  {
+    if ((connection->_ssl= CyaSSL_new(Gearmand()->ctx_ssl())) == NULL)
+    {
+      return gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_new() failed");
+    }
+
+    CyaSSL_set_fd(connection->_ssl, connection->con.fd);
+
+    bool connecting= true;
+    while (connecting)
+    {
+      if (CyaSSL_accept(connection->_ssl) == SSL_SUCCESS)
+      {
+        connecting= false;
+        break;
+      }
+
+      if (CyaSSL_get_error(connection->_ssl, 0) != SSL_ERROR_WANT_READ)
+      {
+        int cyassl_error= CyaSSL_get_error(connection->_ssl, 0);
+        char cyassl_error_buffer[1024]= { 0 };
+        CyaSSL_ERR_error_string(cyassl_error, cyassl_error_buffer);
+        return gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "%s(%d)", cyassl_error_buffer, cyassl_error);
+      }
+    }
+    gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "GearSSL connection made: %d", connection->con.fd);
+  }
+#endif
 
   connection->set_protocol(&gear_context);
 
@@ -313,12 +347,17 @@ namespace gearmand {
 namespace protocol {
 
 Gear::Gear() :
-  Plugin("Gear")
-{
-  command_line_options().add_options()
-    ("port,p", boost::program_options::value(&_port)->default_value(GEARMAN_DEFAULT_TCP_PORT_STRING),
-     "Port the server should listen on.");
-}
+  Plugin("Gear"),
+  _port(GEARMAN_DEFAULT_TCP_PORT_STRING),
+  opt_ssl(false)
+  {
+    command_line_options().add_options()
+      ("port,p", boost::program_options::value(&_port)->default_value(GEARMAN_DEFAULT_TCP_PORT_STRING),
+       "Port the server should listen on.")
+      ("ssl", boost::program_options::bool_switch(&opt_ssl)->default_value(false),
+       "Enable ssl connections.")
+      ;
+  }
 
 Gear::~Gear()
 {
@@ -354,7 +393,31 @@ gearmand_error_t Gear::start(gearmand_st *gearmand)
     _port.append(service);
   }
 
-  gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Initializing Gear on port %s", _port.c_str());
+  gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Initializing Gear on port %s with SSL: %s", _port.c_str(), opt_ssl ? "true" : "false");
+
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+  if (opt_ssl)
+  {
+    gearmand->init_ssl();
+
+    if (CyaSSL_CTX_load_verify_locations(gearmand->ctx_ssl(), GEARMAND_CA_CERTIFICATE, 0) != SSL_SUCCESS)
+    {
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_load_verify_locations() cannot local the ca certificate %s", GEARMAND_CA_CERTIFICATE);
+    }
+
+    if (CyaSSL_CTX_use_certificate_file(gearmand->ctx_ssl(), GEARMAND_SERVER_PEM, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    {   
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_use_certificate_file() cannot obtain certificate %s", GEARMAND_SERVER_PEM);
+    }
+
+    if (CyaSSL_CTX_use_PrivateKey_file(gearmand->ctx_ssl(), GEARMAND_SERVER_KEY, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    {   
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_use_PrivateKey_file() cannot obtain certificate %s", GEARMAND_SERVER_KEY);
+    }
+
+    assert(gearmand->ctx_ssl());
+  }
+#endif
 
   rc= gearmand_port_add(gearmand, _port.c_str(), _gear_con_add);
 

@@ -66,6 +66,13 @@ static void _connection_close(gearmand_io_st *connection)
   }
   else
   {
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+    if (connection->root and connection->root->_ssl)
+    {
+      CyaSSL_shutdown(connection->root->_ssl);
+      connection->root->_ssl= NULL;
+    }
+#endif
     (void)gearmand_sockfd_close(connection->fd);
     assert_msg(false, "We should never have an internal fd");
   }
@@ -99,7 +106,16 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
 
   while (1)
   {
-    read_size= recv(connection->fd, data, data_size, MSG_DONTWAIT);
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+    if (con->_ssl)
+    {
+      read_size= CyaSSL_recv(con->_ssl, data, data_size, MSG_DONTWAIT);
+    }
+    else
+#endif
+    {
+      read_size= recv(connection->fd, data, data_size, MSG_DONTWAIT);
+    }
 
     if (read_size == 0)
     {
@@ -142,7 +158,6 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
           _connection_close(connection);
           return 0;
         }
-        break;
 
       default:
         ret= GEARMAND_ERRNO;
@@ -229,7 +244,17 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
     case gearmand_io_st::GEARMAND_CON_UNIVERSAL_CONNECTED:
       while (connection->send_buffer_size)
       {
-        ssize_t write_size= send(connection->fd, connection->send_buffer_ptr, connection->send_buffer_size, MSG_NOSIGNAL|MSG_DONTWAIT);
+        ssize_t write_size;
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+        if (con->_ssl)
+        {
+          write_size= CyaSSL_send(con->_ssl, connection->send_buffer_ptr, connection->send_buffer_size, MSG_NOSIGNAL|MSG_DONTWAIT);
+        }
+        else
+#endif
+        {
+          write_size= send(connection->fd, connection->send_buffer_ptr, connection->send_buffer_size, MSG_NOSIGNAL|MSG_DONTWAIT);
+        }
 
         if (write_size == 0) // detect infinite loop?
         {
@@ -613,11 +638,10 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
   return GEARMAND_SUCCESS;
 }
 
+#pragma GCC diagnostic push
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
-
-
 gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
 {
   gearmand_io_st *connection= &con->con;
@@ -806,7 +830,7 @@ gearmand_error_t gearmand_io_set_revents(gearman_server_con_st *con, short reven
 
 static gearmand_error_t _io_setsockopt(gearmand_io_st &connection)
 {
-  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "setsockopt() %d", connection.fd);
+  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "setsockopt() fd:%d", connection.fd);
   {
     int setting= 1;
     if (setsockopt(connection.fd, IPPROTO_TCP, TCP_NODELAY, &setting, (socklen_t)sizeof(int)) and errno != EOPNOTSUPP)
@@ -837,6 +861,7 @@ static gearmand_error_t _io_setsockopt(gearmand_io_st &connection)
   }
 #endif
 
+#if 0
   if (0)
   {
     struct timeval waittime;
@@ -852,7 +877,9 @@ static gearmand_error_t _io_setsockopt(gearmand_io_st &connection)
       return gearmand_perror(errno, "setsockopt(SO_RCVTIMEO)");
     }
   }
+#endif
 
+#if 0
   if (0)
   {
     int setting= GEARMAND_DEFAULT_SOCKET_SEND_SIZE;
@@ -867,6 +894,7 @@ static gearmand_error_t _io_setsockopt(gearmand_io_st &connection)
       return gearmand_perror(errno, "setsockopt(SO_RCVBUF)");
     }
   }
+#endif
 
   if (SOCK_NONBLOCK == 0)
   {
@@ -935,3 +963,4 @@ void gearmand_pipe_close(int& pipefd)
 
   pipefd= -1;
 }
+#pragma GCC diagnostic pop
