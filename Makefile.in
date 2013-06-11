@@ -708,7 +708,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/m4/ax_append_flag.m4 \
 	$(top_srcdir)/m4/ax_append_link_flags.m4 \
 	$(top_srcdir)/m4/ax_append_to_file.m4 \
-	$(top_srcdir)/m4/ax_assert.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_library.m4 \
 	$(top_srcdir)/m4/ax_check_link_flag.m4 \
@@ -717,8 +716,8 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/m4/ax_compiler_version.m4 \
 	$(top_srcdir)/m4/ax_count_cpus.m4 \
 	$(top_srcdir)/m4/ax_cxx_gcc_abi_demangle.m4 \
-	$(top_srcdir)/m4/ax_debug.m4 $(top_srcdir)/m4/ax_dlopen.m4 \
-	$(top_srcdir)/m4/ax_endian.m4 \
+	$(top_srcdir)/m4/ax_cyassl.m4 $(top_srcdir)/m4/ax_debug.m4 \
+	$(top_srcdir)/m4/ax_dlopen.m4 $(top_srcdir)/m4/ax_endian.m4 \
 	$(top_srcdir)/m4/ax_file_escapes.m4 \
 	$(top_srcdir)/m4/ax_harden_compiler_flags.m4 \
 	$(top_srcdir)/m4/ax_hex_version.m4 \
@@ -749,7 +748,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/m4/pandora_enable_dtrace.m4 \
 	$(top_srcdir)/m4/pandora_have_libtokyocabinet.m4 \
 	$(top_srcdir)/m4/socket_send_flags.m4 \
-	$(top_srcdir)/m4/visibility.m4 \
+	$(top_srcdir)/m4/visibility.m4 $(top_srcdir)/version.m4 \
 	$(top_srcdir)/libhashkit/include.m4 \
 	$(top_srcdir)/libtest/yatl.m4 \
 	$(top_srcdir)/libtest/m4/mysql.m4 \
@@ -924,6 +923,7 @@ am__objects_6 = libgearman/libgearman_libgearman_hostile_la-check.lo \
 	libgearman/libgearman_libgearman_hostile_la-log.lo \
 	libgearman/libgearman_libgearman_hostile_la-packet.lo \
 	libgearman/libgearman_libgearman_hostile_la-parse.lo \
+	libgearman/protocol/libgearman_libgearman_hostile_la-echo.lo \
 	libgearman/protocol/libgearman_libgearman_hostile_la-submit.lo \
 	libgearman/libgearman_libgearman_hostile_la-result.lo \
 	libgearman/libgearman_libgearman_hostile_la-run.lo \
@@ -995,6 +995,7 @@ am_libgearman_libgearman_la_OBJECTS =  \
 	libgearman/libgearman_libgearman_la-log.lo \
 	libgearman/libgearman_libgearman_la-packet.lo \
 	libgearman/libgearman_libgearman_la-parse.lo \
+	libgearman/protocol/libgearman_libgearman_la-echo.lo \
 	libgearman/protocol/libgearman_libgearman_la-submit.lo \
 	libgearman/libgearman_libgearman_la-result.lo \
 	libgearman/libgearman_libgearman_la-run.lo \
@@ -1028,6 +1029,7 @@ am_libgearman_libgearmancore_la_OBJECTS =  \
 	libgearman/libgearman_libgearmancore_la-error_code.lo \
 	libgearman/libgearman_libgearmancore_la-log.lo \
 	libgearman/libgearman_libgearmancore_la-packet.lo \
+	libgearman/protocol/libgearman_libgearmancore_la-echo.lo \
 	libgearman/libgearman_libgearmancore_la-server_options.lo \
 	libgearman/libgearman_libgearmancore_la-strerror.lo \
 	libgearman/libgearman_libgearmancore_la-universal.lo \
@@ -1235,6 +1237,7 @@ am_tests_libstartworker_la_OBJECTS =  \
 	tests/workers/v2/tests_libstartworker_la-echo_or_react.lo \
 	tests/workers/v2/tests_libstartworker_la-echo_or_react_chunk.lo \
 	tests/workers/v2/tests_libstartworker_la-increment_reset.lo \
+	tests/workers/v2/tests_libstartworker_la-check_order.lo \
 	tests/workers/v2/tests_libstartworker_la-sleep_return_random.lo \
 	tests/workers/v2/tests_libstartworker_la-split.lo \
 	tests/workers/v2/tests_libstartworker_la-unique.lo
@@ -1591,6 +1594,7 @@ tests_libgearman_1_0_multi_client_test_LINK = $(LIBTOOL) $(AM_V_lt) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_tests_libgearman_1_0_worker_test_OBJECTS =  \
 	tests/libgearman-1.0/worker_test.$(OBJEXT) \
+	tests/workers/v2/call_exception.$(OBJEXT) \
 	tests/workers/v2/echo_or_react.$(OBJEXT) \
 	tests/workers/v2/echo_or_react_chunk.$(OBJEXT)
 tests_libgearman_1_0_worker_test_OBJECTS =  \
@@ -2002,6 +2006,7 @@ NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OPENSSL = @OPENSSL@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -2218,8 +2223,9 @@ noinst_HEADERS = libtest/client.hpp libtest/formatter.hpp \
 	libgearman-server/thread.h libgearman-server/timer.h \
 	libgearman-server/verbose.h libgearman-server/wakeup.h \
 	libgearman-server/worker.h libgearman/client.hpp \
-	libgearman/worker.hpp libgearman/magic.h libgearman/client.h \
-	libgearman/check.h libgearman/interface/client.hpp \
+	libgearman/worker.hpp libgearman/ssl.h libgearman/magic.h \
+	libgearman/client.h libgearman/check.h \
+	libgearman/interface/client.hpp \
 	libgearman/interface/packet.hpp libgearman/interface/push.hpp \
 	libgearman/interface/task.hpp \
 	libgearman/interface/universal.hpp \
@@ -2238,8 +2244,8 @@ noinst_HEADERS = libtest/client.hpp libtest/formatter.hpp \
 	libgearman/function/make.hpp libgearman/function/null.hpp \
 	libgearman/function/partition.hpp libgearman/is.hpp \
 	libgearman/log.hpp libgearman/packet.hpp \
-	libgearman/protocol/submit.h libgearman/result.hpp \
-	libgearman/run.hpp libgearman/status.hpp \
+	libgearman/protocol/echo.h libgearman/protocol/submit.h \
+	libgearman/result.hpp libgearman/run.hpp libgearman/status.hpp \
 	libgearman/strcommand.h libgearman/string.hpp \
 	libgearman/task.hpp libgearman/task_attr.h \
 	libgearman/unique.hpp libgearman/server_options.hpp \
@@ -2261,7 +2267,8 @@ noinst_HEADERS = libtest/client.hpp libtest/formatter.hpp \
 	tests/workers/v1/echo_or_react_chunk.h \
 	tests/workers/v1/increment_reset.h tests/workers/v1/unique.h \
 	tests/workers/v2/call_exception.h tests/workers/v2/called.h \
-	tests/workers/v2/count.h tests/workers/v2/echo_or_react.h \
+	tests/workers/v2/check_order.h tests/workers/v2/count.h \
+	tests/workers/v2/echo_or_react.h \
 	tests/workers/v2/echo_or_react_chunk.h \
 	tests/workers/v2/increment_reset.h \
 	tests/workers/v2/sleep_return_random.h \
@@ -2407,8 +2414,8 @@ libtest_libtest_la_CXXFLAGS = @LIBMEMCACHED_CFLAGS@ -DBUILDING_LIBTEST \
 	$(CURL_CFLAGS)
 EXTRA_libtest_libtest_la_DEPENDENCIES = libtest_tmp_dir libtest/abort \
 	libtest/wait
-libtest_libtest_la_LIBADD = @LIBMEMCACHED_LIB@ @PTHREAD_LIBS@ \
-	$(CURL_LIBS) @RT_LIB@ @LIBDRIZZLE_LIB@
+libtest_libtest_la_LIBADD = @LIBMEMCACHED_LIB@ @CYASSL_LIB@ \
+	@PTHREAD_LIBS@ $(CURL_LIBS) @RT_LIB@ @LIBDRIZZLE_LIB@
 
 # We are either building in tree, or with
 libtest_libtest_la_SOURCES = libtest/alarm.cc libtest/binaries.cc \
@@ -2483,9 +2490,10 @@ libgearman_libgearmancore_la_SOURCES = libgearman/allocator.cc \
 	libgearman/check.cc libgearman/command.cc \
 	libgearman/connection.cc libgearman/error.cc \
 	libgearman/error_code.cc libgearman/log.cc \
-	libgearman/packet.cc libgearman/server_options.cc \
-	libgearman/strerror.cc libgearman/universal.cc \
-	libgearman/uuid.cc libgearman/vector.cc
+	libgearman/packet.cc libgearman/protocol/echo.cc \
+	libgearman/server_options.cc libgearman/strerror.cc \
+	libgearman/universal.cc libgearman/uuid.cc \
+	libgearman/vector.cc
 libgearman_libgearmancore_la_CXXFLAGS = -DBUILDING_LIBGEARMAN
 libgearman_libgearmancore_la_LIBADD = @DL_LIB@ @LIBUUID_LIB@ \
 	libhashkit/libhashkit.la
@@ -2598,7 +2606,7 @@ libgearman_server_libgearman_server_la_LIBADD = @LIBDRIZZLE_LDFLAGS@ \
 	@LIBDRIZZLE_LIB@ $(am__append_10) $(am__append_13) \
 	@HIREDIS_LIB@ $(am__append_19) $(am__append_21) @LIBEVENT_LIB@ \
 	@PTHREAD_LIBS@ $(BOOST_PROGRAM_OPTIONS_LIBS) @LIBM@ @DL_LIB@ \
-	@RT_LIB@ $(am__empty)
+	@RT_LIB@ @CYASSL_LIB@ $(am__empty)
 libgearman_server_libgearman_server_la_SOURCES =  \
 	libgearman-server/error/strerror.cc \
 	libgearman-server/plugins/base.cc \
@@ -2633,7 +2641,7 @@ libgearman_libgearman_result_la_CXXFLAGS = -DBUILDING_LIBGEARMAN
 libgearman_libgearman_result_la_LIBADD = @DL_LIB@
 libgearman_libgearman_result_la_SOURCES = libgearman/vector.cc \
 	libgearman/result.cc libgearman/backtrace.cc
-libgearman_libgearman_la_LIBADD = @LIBUUID_LIB@ @DL_LIB@ \
+libgearman_libgearman_la_LIBADD = @CYASSL_LIB@ @DL_LIB@ @LIBUUID_LIB@ \
 	libhashkit/libhashkit.la $(am__append_26)
 libgearman_libgearman_la_SOURCES = libgearman/check.cc \
 	libgearman/actions.cc libgearman/aggregator.cc \
@@ -2647,9 +2655,9 @@ libgearman_libgearman_la_SOURCES = libgearman/check.cc \
 	libgearman/function/partition.cc libgearman/gearman.cc \
 	libgearman/job.cc libgearman/kill.cc libgearman/log.cc \
 	libgearman/packet.cc libgearman/parse.cc \
-	libgearman/protocol/submit.cc libgearman/result.cc \
-	libgearman/run.cc libgearman/status.cc libgearman/strerror.cc \
-	libgearman/string.cc libgearman/task.cc \
+	libgearman/protocol/echo.cc libgearman/protocol/submit.cc \
+	libgearman/result.cc libgearman/run.cc libgearman/status.cc \
+	libgearman/strerror.cc libgearman/string.cc libgearman/task.cc \
 	libgearman/task_attr.cc libgearman/unique.cc \
 	libgearman/server_options.cc libgearman/universal.cc \
 	libgearman/vector.cc libgearman/worker.cc libgearman/pipe.cc \
@@ -2735,6 +2743,7 @@ tests_libgearman_1_0_worker_test_LDADD =  \
 	${LIBGEARMAN_1_0_CLIENT_LDADD} libgearman/libgearmancore.la
 tests_libgearman_1_0_worker_test_SOURCES =  \
 	tests/libgearman-1.0/worker_test.cc \
+	tests/workers/v2/call_exception.cc \
 	tests/workers/v2/echo_or_react.cc \
 	tests/workers/v2/echo_or_react_chunk.cc
 tests_libgearman_1_0_1077917_SOURCES = tests/libgearman-1.0/1077917.c
@@ -2773,6 +2782,7 @@ tests_libstartworker_la_SOURCES = tests/start_worker.cc \
 	tests/workers/v2/echo_or_react.cc \
 	tests/workers/v2/echo_or_react_chunk.cc \
 	tests/workers/v2/increment_reset.cc \
+	tests/workers/v2/check_order.cc \
 	tests/workers/v2/sleep_return_random.cc \
 	tests/workers/v2/split.cc tests/workers/v2/unique.cc
 tests_round_robin_test_SOURCES = tests/round_robin.cc
@@ -3307,6 +3317,9 @@ libgearman/protocol/$(am__dirstamp):
 libgearman/protocol/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) libgearman/protocol/$(DEPDIR)
 	@: > libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
+libgearman/protocol/libgearman_libgearman_hostile_la-echo.lo:  \
+	libgearman/protocol/$(am__dirstamp) \
+	libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
 libgearman/protocol/libgearman_libgearman_hostile_la-submit.lo:  \
 	libgearman/protocol/$(am__dirstamp) \
 	libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
@@ -3447,6 +3460,9 @@ libgearman/libgearman_libgearman_la-packet.lo:  \
 libgearman/libgearman_libgearman_la-parse.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
+libgearman/protocol/libgearman_libgearman_la-echo.lo:  \
+	libgearman/protocol/$(am__dirstamp) \
+	libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
 libgearman/protocol/libgearman_libgearman_la-submit.lo:  \
 	libgearman/protocol/$(am__dirstamp) \
 	libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
@@ -3524,6 +3540,9 @@ libgearman/libgearman_libgearmancore_la-log.lo:  \
 libgearman/libgearman_libgearmancore_la-packet.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
+libgearman/protocol/libgearman_libgearmancore_la-echo.lo:  \
+	libgearman/protocol/$(am__dirstamp) \
+	libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
 libgearman/libgearman_libgearmancore_la-server_options.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
@@ -3912,6 +3931,9 @@ tests/workers/v2/tests_libstartworker_la-echo_or_react_chunk.lo:  \
 	tests/workers/v2/$(am__dirstamp) \
 	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
 tests/workers/v2/tests_libstartworker_la-increment_reset.lo:  \
+	tests/workers/v2/$(am__dirstamp) \
+	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
+tests/workers/v2/tests_libstartworker_la-check_order.lo:  \
 	tests/workers/v2/$(am__dirstamp) \
 	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
 tests/workers/v2/tests_libstartworker_la-sleep_return_random.lo:  \
@@ -4444,6 +4466,9 @@ tests/libgearman-1.0/multi_client_test$(EXEEXT): $(tests_libgearman_1_0_multi_cl
 tests/libgearman-1.0/worker_test.$(OBJEXT):  \
 	tests/libgearman-1.0/$(am__dirstamp) \
 	tests/libgearman-1.0/$(DEPDIR)/$(am__dirstamp)
+tests/workers/v2/call_exception.$(OBJEXT):  \
+	tests/workers/v2/$(am__dirstamp) \
+	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
 tests/workers/v2/echo_or_react.$(OBJEXT):  \
 	tests/workers/v2/$(am__dirstamp) \
 	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
@@ -4747,8 +4772,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/function/$(DEPDIR)/libgearman_libgearman_la-function_v2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/function/$(DEPDIR)/libgearman_libgearman_la-make.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/function/$(DEPDIR)/libgearman_libgearman_la-partition.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-echo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-submit.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-echo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman/protocol/$(DEPDIR)/libgearman_libgearmancore_la-echo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libhashkit/$(DEPDIR)/libhashkit_libhashkit_la-aes.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libhashkit/$(DEPDIR)/libhashkit_libhashkit_la-algorithm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libhashkit/$(DEPDIR)/libhashkit_libhashkit_la-behavior.Plo@am__quote@
@@ -4925,6 +4953,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v1/$(DEPDIR)/tests_libstartworker_la-echo_or_react_chunk_worker.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v1/$(DEPDIR)/tests_libstartworker_la-increment_reset_worker.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v1/$(DEPDIR)/tests_libstartworker_la-unique.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/call_exception.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/echo_or_react.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/echo_or_react_chunk.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libgearman_1_0_client_test-call_exception.Po@am__quote@
@@ -4935,6 +4964,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libgearman_1_0_client_test-unique.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-call_exception.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-called.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-check_order.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-count.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-echo_or_react.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-echo_or_react_chunk.Plo@am__quote@
@@ -5648,6 +5678,13 @@ libgearman/libgearman_libgearman_hostile_la-parse.lo: libgearman/parse.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_hostile_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearman_hostile_la-parse.lo `test -f 'libgearman/parse.cc' || echo '$(srcdir)/'`libgearman/parse.cc
 
+libgearman/protocol/libgearman_libgearman_hostile_la-echo.lo: libgearman/protocol/echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_hostile_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/protocol/libgearman_libgearman_hostile_la-echo.lo -MD -MP -MF libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-echo.Tpo -c -o libgearman/protocol/libgearman_libgearman_hostile_la-echo.lo `test -f 'libgearman/protocol/echo.cc' || echo '$(srcdir)/'`libgearman/protocol/echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-echo.Tpo libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-echo.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libgearman/protocol/echo.cc' object='libgearman/protocol/libgearman_libgearman_hostile_la-echo.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_hostile_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/protocol/libgearman_libgearman_hostile_la-echo.lo `test -f 'libgearman/protocol/echo.cc' || echo '$(srcdir)/'`libgearman/protocol/echo.cc
+
 libgearman/protocol/libgearman_libgearman_hostile_la-submit.lo: libgearman/protocol/submit.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_hostile_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/protocol/libgearman_libgearman_hostile_la-submit.lo -MD -MP -MF libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-submit.Tpo -c -o libgearman/protocol/libgearman_libgearman_hostile_la-submit.lo `test -f 'libgearman/protocol/submit.cc' || echo '$(srcdir)/'`libgearman/protocol/submit.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-submit.Tpo libgearman/protocol/$(DEPDIR)/libgearman_libgearman_hostile_la-submit.Plo
@@ -5963,6 +6000,13 @@ libgearman/libgearman_libgearman_la-parse.lo: libgearman/parse.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearman_la-parse.lo `test -f 'libgearman/parse.cc' || echo '$(srcdir)/'`libgearman/parse.cc
 
+libgearman/protocol/libgearman_libgearman_la-echo.lo: libgearman/protocol/echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/protocol/libgearman_libgearman_la-echo.lo -MD -MP -MF libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-echo.Tpo -c -o libgearman/protocol/libgearman_libgearman_la-echo.lo `test -f 'libgearman/protocol/echo.cc' || echo '$(srcdir)/'`libgearman/protocol/echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-echo.Tpo libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-echo.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libgearman/protocol/echo.cc' object='libgearman/protocol/libgearman_libgearman_la-echo.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/protocol/libgearman_libgearman_la-echo.lo `test -f 'libgearman/protocol/echo.cc' || echo '$(srcdir)/'`libgearman/protocol/echo.cc
+
 libgearman/protocol/libgearman_libgearman_la-submit.lo: libgearman/protocol/submit.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/protocol/libgearman_libgearman_la-submit.lo -MD -MP -MF libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Tpo -c -o libgearman/protocol/libgearman_libgearman_la-submit.lo `test -f 'libgearman/protocol/submit.cc' || echo '$(srcdir)/'`libgearman/protocol/submit.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Tpo libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Plo
@@ -6137,6 +6181,13 @@ libgearman/libgearman_libgearmancore_la-packet.lo: libgearman/packet.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libgearman/packet.cc' object='libgearman/libgearman_libgearmancore_la-packet.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearmancore_la-packet.lo `test -f 'libgearman/packet.cc' || echo '$(srcdir)/'`libgearman/packet.cc
+
+libgearman/protocol/libgearman_libgearmancore_la-echo.lo: libgearman/protocol/echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/protocol/libgearman_libgearmancore_la-echo.lo -MD -MP -MF libgearman/protocol/$(DEPDIR)/libgearman_libgearmancore_la-echo.Tpo -c -o libgearman/protocol/libgearman_libgearmancore_la-echo.lo `test -f 'libgearman/protocol/echo.cc' || echo '$(srcdir)/'`libgearman/protocol/echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/protocol/$(DEPDIR)/libgearman_libgearmancore_la-echo.Tpo libgearman/protocol/$(DEPDIR)/libgearman_libgearmancore_la-echo.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libgearman/protocol/echo.cc' object='libgearman/protocol/libgearman_libgearmancore_la-echo.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/protocol/libgearman_libgearmancore_la-echo.lo `test -f 'libgearman/protocol/echo.cc' || echo '$(srcdir)/'`libgearman/protocol/echo.cc
 
 libgearman/libgearman_libgearmancore_la-server_options.lo: libgearman/server_options.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/libgearman_libgearmancore_la-server_options.lo -MD -MP -MF libgearman/$(DEPDIR)/libgearman_libgearmancore_la-server_options.Tpo -c -o libgearman/libgearman_libgearmancore_la-server_options.lo `test -f 'libgearman/server_options.cc' || echo '$(srcdir)/'`libgearman/server_options.cc
@@ -6858,6 +6909,13 @@ tests/workers/v2/tests_libstartworker_la-increment_reset.lo: tests/workers/v2/in
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tests/workers/v2/increment_reset.cc' object='tests/workers/v2/tests_libstartworker_la-increment_reset.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -c -o tests/workers/v2/tests_libstartworker_la-increment_reset.lo `test -f 'tests/workers/v2/increment_reset.cc' || echo '$(srcdir)/'`tests/workers/v2/increment_reset.cc
+
+tests/workers/v2/tests_libstartworker_la-check_order.lo: tests/workers/v2/check_order.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -MT tests/workers/v2/tests_libstartworker_la-check_order.lo -MD -MP -MF tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-check_order.Tpo -c -o tests/workers/v2/tests_libstartworker_la-check_order.lo `test -f 'tests/workers/v2/check_order.cc' || echo '$(srcdir)/'`tests/workers/v2/check_order.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-check_order.Tpo tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-check_order.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tests/workers/v2/check_order.cc' object='tests/workers/v2/tests_libstartworker_la-check_order.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -c -o tests/workers/v2/tests_libstartworker_la-check_order.lo `test -f 'tests/workers/v2/check_order.cc' || echo '$(srcdir)/'`tests/workers/v2/check_order.cc
 
 tests/workers/v2/tests_libstartworker_la-sleep_return_random.lo: tests/workers/v2/sleep_return_random.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -MT tests/workers/v2/tests_libstartworker_la-sleep_return_random.lo -MD -MP -MF tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-sleep_return_random.Tpo -c -o tests/workers/v2/tests_libstartworker_la-sleep_return_random.lo `test -f 'tests/workers/v2/sleep_return_random.cc' || echo '$(srcdir)/'`tests/workers/v2/sleep_return_random.cc
@@ -8713,6 +8771,9 @@ gearmand-valgrind: gearmand/gearmand
 
 gearmand-debug: gearmand/gearmand
 	$(LIBTOOL) --mode=execute gdb gearmand/gearmand
+
+internals: tests/libgearman-1.0/internals_test gearmand/gearmand
+	@$(GDB_COMMAND) tests/libgearman-1.0/internals_test
 libgearman/error_code.hpp: libgearman/error_code.gperf
 	if $(GPERF) $(GPERFFLAGS) --key-positions=9,10,11,17 --struct-type \
 	  libgearman/error_code.gperf >$@t; then \
@@ -9065,6 +9126,11 @@ configmake.h: Makefile
 	@{ echo '/* DO NOT EDIT! GENERATED AUTOMATICALLY! */'; \
 	  echo '#define SYSCONFDIR "$(sysconfdir)"'; \
 	  echo '#define GEARMAND_CONFIG "$(sysconfdir)/gearmand.conf"'; \
+	  echo '#define GEARMAND_CA_CERTIFICATE "$(sysconfdir)/ssl/certs/gearmand-ca.pem"'; \
+	  echo '#define GEARMAND_SERVER_PEM "$(sysconfdir)/ssl/certs/gearmand.pem"'; \
+	  echo '#define GEARMAND_SERVER_KEY "$(sysconfdir)/ssl/certs/gearmand.key"'; \
+	  echo '#define GEARMAND_CLIENT_PEM "$(sysconfdir)/ssl/certs/gearman.pem"'; \
+	  echo '#define GEARMAND_CLIENT_KEY "$(sysconfdir)/ssl/certs/gearman.key"'; \
 	  echo '#define LOCALSTATEDIR "$(localstatedir)"'; \
 	  echo '#define GEARMAND_PID "$(localstatedir)/gearmand.pid"'; \
 	  } | sed '/""/d' > $@-t

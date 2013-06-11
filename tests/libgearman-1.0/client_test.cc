@@ -414,6 +414,10 @@ static test_return_t echo_test(void *object)
 
   gearman_string_t value= { test_literal_param("This is my echo test") };
 
+  if (GEARMAN_SUCCESS !=  gearman_client_echo(client, gearman_string_param(value)))
+  {
+    Error << gearman_client_error(client);
+  }
   ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_echo(client, gearman_string_param(value)));
 
   return TEST_SUCCESS;
@@ -444,8 +448,6 @@ static test_return_t submit_job_test(void *object)
   gearman_client_st *client= (gearman_client_st *)object;
   ASSERT_TRUE(client);
 
-  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_echo(client, test_literal_param("foo")));
-
   const char *worker_function= (const char *)gearman_client_context(client);
   ASSERT_TRUE(worker_function);
   gearman_string_t value= { test_literal_param("submit_job_test") };
@@ -466,6 +468,16 @@ static test_return_t submit_job_test(void *object)
   return TEST_SUCCESS;
 }
 
+static test_return_t submit_echo_job_test(void *object)
+{
+  gearman_client_st *client= (gearman_client_st *)object;
+  ASSERT_TRUE(client);
+
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_echo(client, test_literal_param("foo")));
+  
+  return submit_job_test(object);
+}
+
 static test_return_t submit_null_job_test(void *object)
 {
   gearman_client_st *client= (gearman_client_st *)object;
@@ -473,7 +485,7 @@ static test_return_t submit_null_job_test(void *object)
   test_truth(client);
 
   const char *worker_function= (const char *)gearman_client_context(client);
-  test_truth(worker_function);
+  ASSERT_NOT_NULL(worker_function);
 
   size_t result_length;
   gearman_return_t rc;
@@ -499,9 +511,18 @@ static test_return_t submit_exception_job_test(void *object)
   void *job_result= gearman_client_do(client, worker_function, NULL,
                                       test_literal_param("exception"),
                                       &result_length, &rc);
-  ASSERT_EQ(GEARMAN_SUCCESS, rc);
-  test_memcmp("exception", job_result, result_length);
-  free(job_result);
+  if (gearman_client_has_option(client, GEARMAN_CLIENT_EXCEPTION))
+  {
+    ASSERT_NOT_NULL(job_result);
+    ASSERT_EQ(GEARMAN_WORK_EXCEPTION, rc);
+    test_memcmp(EXCEPTION_MESSAGE, job_result, result_length);
+    free(job_result);
+  }
+  else
+  {
+    ASSERT_NULL(job_result);
+    ASSERT_EQ(GEARMAN_WORK_EXCEPTION, rc);
+  }
 
   return TEST_SUCCESS;
 }
@@ -519,6 +540,7 @@ static test_return_t submit_warning_job_test(void *object)
   void *job_result= gearman_client_do(client, worker_function, NULL,
                                       test_literal_param("warning"),
                                       &result_length, &rc);
+  ASSERT_NOT_NULL(job_result);
   ASSERT_EQ(GEARMAN_SUCCESS, rc);
   test_memcmp("warning", job_result, result_length);
   free(job_result);
@@ -550,21 +572,24 @@ static test_return_t submit_multiple_do(void *object)
 {
   for (uint32_t x= 0; x < 100 /* arbitrary */; x++)
   {
+    libgearman::Client client((gearman_client_st *)object);
+    gearman_client_set_context(&client, gearman_client_context((gearman_client_st *)object));
+
     uint32_t option= uint32_t(random() %3);
 
     switch (option)
     {
     case 0:
-      ASSERT_EQ(TEST_SUCCESS, submit_null_job_test(object));
+      ASSERT_EQ(TEST_SUCCESS, submit_null_job_test(&client));
       break;
 
     case 1:
-      ASSERT_EQ(TEST_SUCCESS, submit_job_test(object));
+      ASSERT_EQ(TEST_SUCCESS, submit_job_test(&client));
       break;
 
     default:
     case 2:
-      ASSERT_EQ(TEST_SUCCESS, submit_exception_job_test(object));
+      ASSERT_EQ(TEST_SUCCESS, submit_exception_job_test(&client));
       break;
     }
   }
@@ -612,7 +637,7 @@ static void test_free_fn(void *ptr, void *context)
 {
   bool *free_check= (bool *)context;
   *free_check= true;
-  return free(ptr);
+  free(ptr);
 }
 
 static test_return_t gearman_client_set_workload_malloc_fn_test(void *object)
@@ -666,7 +691,9 @@ struct _alloc_test_st {
   bool success() // count is valid as 1 only with the current test
   {
     if (total and count == 1)
+    {
       return true;
+    }
 
     std::cerr << __func__ << ":" << __LINE__ << " Total:" <<  total << " Count:" << count << std::endl;
 
@@ -1332,6 +1359,16 @@ static test_return_t gearman_client_errno_no_error_TEST(void *)
 {
   libgearman::Client client;
   ASSERT_EQ(0, gearman_client_errno(&client));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_options_SSL_TEST(void *)
+{
+  libgearman::Client client;
+  ASSERT_FALSE(gearman_client_has_option(&client, GEARMAN_CLIENT_SSL));
+  gearman_client_add_options(&client, GEARMAN_CLIENT_SSL);
+  ASSERT_TRUE(gearman_client_has_option(&client, GEARMAN_CLIENT_SSL));
 
   return TEST_SUCCESS;
 }
@@ -2074,12 +2111,14 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
   in_port_t first_port= libtest::default_port();
   ASSERT_TRUE(server_startup(servers, "gearmand", first_port, argv));
 
+#if 0
   if (0)
   {
     const char *null_args[]= { 0 };
     in_port_t second_port= libtest::get_free_port();
     ASSERT_TRUE(server_startup(servers, "gearmand", second_port, null_args));
   }
+#endif
 
   client_test_st *test= new client_test_st();
   ASSERT_TRUE(test);
@@ -2243,6 +2282,7 @@ test_st gearman_client_st_init_TESTS[] ={
 
 test_st gearman_client_st_TESTS[] ={
   {"submit_job", 0, submit_job_test },
+  {"submit_echo_job", 0, submit_echo_job_test },
   {"submit_null_job", 0, submit_null_job_test },
   {"exception", 0, submit_exception_job_test },
   {"warning", 0, submit_warning_job_test },
@@ -2397,6 +2437,7 @@ test_st gearman_client_st_NULL_invocation_TESTS[] ={
   {"gearman_client_errno()", 0, gearman_client_errno_TEST },
   {"gearman_client_errno() no error", 0, gearman_client_errno_no_error_TEST },
   {"gearman_client_options()", 0, gearman_client_options_TEST },
+  {"gearman_client_options(SSL)", 0, gearman_client_options_SSL_TEST },
   {0, 0, 0}
 };
 

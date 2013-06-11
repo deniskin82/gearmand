@@ -15,6 +15,7 @@ nobase_include_HEADERS+= libgearman/gearman.h
 noinst_HEADERS+= libgearman/client.hpp
 noinst_HEADERS+= libgearman/worker.hpp
 
+noinst_HEADERS+= libgearman/ssl.h
 noinst_HEADERS+= libgearman/magic.h
 noinst_HEADERS+= libgearman/client.h
 noinst_HEADERS+= libgearman/check.h
@@ -54,6 +55,7 @@ noinst_HEADERS+= \
 		 libgearman/is.hpp \
 		 libgearman/log.hpp \
 		 libgearman/packet.hpp \
+		 libgearman/protocol/echo.h \
 		 libgearman/protocol/submit.h \
 		 libgearman/result.hpp \
 		 libgearman/run.hpp \
@@ -112,6 +114,7 @@ libgearman_libgearman_la_SOURCES+= \
 				  libgearman/log.cc \
 				  libgearman/packet.cc \
 				  libgearman/parse.cc \
+				  libgearman/protocol/echo.cc \
 				  libgearman/protocol/submit.cc \
 				  libgearman/result.cc \
 				  libgearman/run.cc \
@@ -133,8 +136,9 @@ libgearman_libgearman_la_CXXFLAGS+= -DBUILDING_LIBGEARMAN
 
 libgearman_libgearman_la_LDFLAGS+= -version-info $(GEARMAN_LIBRARY_VERSION)
 
-libgearman_libgearman_la_LIBADD+= @LIBUUID_LIB@
+libgearman_libgearman_la_LIBADD+= @CYASSL_LIB@
 libgearman_libgearman_la_LIBADD+= @DL_LIB@
+libgearman_libgearman_la_LIBADD+= @LIBUUID_LIB@
 libgearman_libgearman_la_LIBADD+= libhashkit/libhashkit.la
 
 if TARGET_LINUX

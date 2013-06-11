@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -35,35 +35,56 @@
  *
  */
 
-#pragma once
+#include <gear_config.h>
 
-namespace bin {
+#include <libtest/test.hpp>
 
-class Client
+using namespace libtest;
+
+#include <libgearman-1.0/gearman.h>
+
+#include "tests/workers/v2/check_order.h"
+
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+
+gearman_return_t check_order_worker(gearman_job_st *job, void *context)
 {
-public:
-  Client() :
-    _client()
+  uint32_t* next_number= (uint32_t*)context;
+
+  errno= 0;
+  uint32_t current_number= strtol((const char*)gearman_job_workload(job), NULL, 10);
+  if (errno != 0)
   {
-    if (gearman_client_create(&_client) == NULL)
+    char buffer[1024];
+    if (strerror_r(errno, buffer, sizeof(buffer)) == 0)
     {
-      std::cerr << "Failed memory allocation while initializing client." << std::endl;
-      abort();
+      gearman_return_t rc= gearman_job_send_exception(job, buffer, strlen(buffer));
+      if (rc == GEARMAN_SUCCESS)
+      {
+        return GEARMAN_WORK_EXCEPTION;
+      }
     }
+
+    // Some other failure happened when sending exception
+    return GEARMAN_ERROR;
   }
 
-  ~Client()
+  if ((current_number) == (*next_number))
   {
-    gearman_client_free(&_client);
+    *next_number= current_number +1;
+    return GEARMAN_SUCCESS;
   }
 
-  gearman_client_st &client()
+  char buffer[1024];
+  int excep_length= snprintf(buffer, sizeof(buffer), "current number %u != %u (next_number)", current_number, *next_number);
+  gearman_return_t rc= gearman_job_send_exception(job, buffer, excep_length);
+  if (rc == GEARMAN_SUCCESS)
   {
-    return _client;
+    return GEARMAN_FATAL;
   }
 
-private:
-  gearman_client_st _client;
-};
-
-} // namespace bin
+  // Some other failure happened when sending exception
+  return GEARMAN_FATAL;
+}

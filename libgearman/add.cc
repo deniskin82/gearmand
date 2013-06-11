@@ -44,6 +44,7 @@
 #include <libgearman/packet.hpp>
 
 #include "libgearman/assert.hpp"
+#include "libgearman/log.hpp"
 
 #include "libgearman/vector.h"
 #include "libgearman/uuid.hpp"
@@ -203,7 +204,7 @@ gearman_task_st *add_task(gearman_client_st& client,
   task_shell= gearman_task_internal_create(client, task_shell);
   if (task_shell == NULL or task_shell->impl() == NULL)
   {
-    gearman_error(client.impl()->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "");
+    assert(client.impl()->universal.error());
     return NULL;
   }
   assert(task_shell->impl()->client);
@@ -232,7 +233,10 @@ gearman_task_st *add_task(gearman_client_st& client,
   {
     if (client.impl()->options.generate_unique or is_background(command))
     {
-      safe_uuid_generate(task->unique, task->unique_length);
+      if (safe_uuid_generate(task->unique, task->unique_length) == -1)
+      {
+        gearman_log_debug(task->client->impl()->universal, "uuid_generate_time_safe() failed or does not exist on this platform");
+      }
     }
     else
     {
@@ -376,7 +380,7 @@ gearman_task_st *add_reducer_task(gearman_client_st *client,
   gearman_task_st *task= gearman_task_internal_create(*client, NULL);
   if (task == NULL)
   {
-    gearman_error(client->impl()->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "");
+    assert(client->impl()->universal.error_code());
     return NULL;
   }
 

@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -37,51 +37,14 @@
 
 #pragma once
 
-#include <stdexcept>
 
-namespace test {
+namespace libgearman {
+namespace protocol {
 
-class Worker {
-public:
-  Worker()
-  {
-    _worker= gearman_worker_create(NULL);
+  gearman_return_t echo(gearman_universal_st& universal,
+                        gearman_packet_st& message,
+                        const gearman_string_t &workload);
 
-    if (_worker == NULL)
-    {
-      throw std::runtime_error("gearman_worker_create()");
-    }
-  }
+} // namespace protocol
+} // namespace libgearman
 
-  Worker(in_port_t arg)
-  {
-    _worker= gearman_worker_create(NULL);
-
-    if (_worker == NULL)
-    {
-      throw std::runtime_error("gearman_worker_create()");
-    }
-    gearman_worker_add_server(_worker, "localhost", arg);
-  }
-
-  gearman_worker_st* operator&() const
-  { 
-    return _worker;
-  }
-
-  gearman_worker_st* operator->() const
-  { 
-    return _worker;
-  }
-
-  ~Worker()
-  {
-    gearman_worker_free(_worker);
-  }
-
-private:
-  gearman_worker_st *_worker;
-
-};
-
-} // namespace test
