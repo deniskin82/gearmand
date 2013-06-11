@@ -43,6 +43,7 @@
  */
 
 #include "gear_config.h"
+#include "configmake.h"
 #include <libgearman/common.h>
 
 #include "libgearman/assert.hpp"
@@ -51,6 +52,10 @@
 #include "libgearman/log.hpp"
 #include "libgearman/vector.h"
 #include "libgearman/uuid.hpp"
+
+#include "libgearman/protocol/echo.h"
+
+#include "libgearman/ssl.h"
 
 #include <cerrno>
 #include <cstdarg>
@@ -254,8 +259,8 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
     pfds= static_cast<pollfd*>(realloc(universal.pfds, con_count * sizeof(struct pollfd)));
     if (pfds == NULL)
     {
-      gearman_perror(universal, "pollfd realloc");
-      return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+      return gearman_universal_set_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, GEARMAN_AT,
+                                         "realloc failed to allocate %u pollfd", uint32_t(con_count));
     }
 
     universal.pfds= pfds;
@@ -395,6 +400,18 @@ gearman_connection_st *gearman_ready(gearman_universal_st& universal)
   return NULL;
 }
 
+gearman_universal_st::~gearman_universal_st()
+{
+  gearman_string_free(_identifier);
+  gearman_string_free(_namespace);
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+  if (_ctx_ssl)
+  {
+    CyaSSL_CTX_free(_ctx_ssl);
+  }
+#endif
+}
+
 gearman_return_t gearman_universal_st::option(const universal_options_t& option_, bool value)
 {
   switch (option_)
@@ -417,6 +434,42 @@ gearman_return_t gearman_universal_st::option(const universal_options_t& option_
   }
 
   return GEARMAN_SUCCESS;
+}
+
+bool gearman_universal_st::init_ssl()
+{
+  if (options._ssl)
+  {
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+    CyaSSL_Init();
+
+    if ((_ctx_ssl = CyaSSL_CTX_new(CyaTLSv1_client_method())) == NULL)
+    {
+      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, "CyaTLSv1_client_method()");
+      return false;
+    }
+
+    if (CyaSSL_CTX_load_verify_locations(_ctx_ssl, GEARMAND_CA_CERTIFICATE, 0) != SSL_SUCCESS)
+    {
+      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, CA_CERT_PEM);
+      return false;
+    }
+
+    if (CyaSSL_CTX_use_certificate_file(_ctx_ssl, GEARMAND_CLIENT_PEM, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    {   
+      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, CERT_PEM);
+      return false;
+    }
+
+    if (CyaSSL_CTX_use_PrivateKey_file(_ctx_ssl, GEARMAND_CLIENT_KEY, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    {   
+      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, CERT_KEY_PEM);
+      return false;
+    }
+#endif // defined(HAVE_CYASSL) && HAVE_CYASSL
+  }
+
+  return true;
 }
 
 void gearman_universal_st::identifier(const char *identifier_, const size_t identifier_size_)
@@ -527,45 +580,22 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
 
 
 gearman_return_t gearman_echo(gearman_universal_st& universal,
-                              const void *workload,
+                              const void *workload_str,
                               size_t workload_size)
 {
-  if (workload == NULL)
-  {
-    return gearman_error(universal, GEARMAN_INVALID_ARGUMENT, "workload was NULL");
-  }
-
-  if (workload_size == 0)
-  {
-    return gearman_error(universal, GEARMAN_INVALID_ARGUMENT,  "workload_size was 0");
-  }
-
-  if (workload_size > GEARMAN_MAX_ECHO_SIZE)
-  {
-    return gearman_error(universal, GEARMAN_ARGUMENT_TOO_LARGE,  "workload_size was greater then GEARMAN_MAX_ECHO_SIZE");
-  }
-
-  if (universal.has_connections() == false)
-  {
-    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
-  }
-
+  gearman_string_t workload= { static_cast<const char*>(workload_str), workload_size };
   gearman_packet_st message;
-  gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
-                                                   GEARMAN_COMMAND_ECHO_REQ,
-                                                   &workload, &workload_size, 1);
+  gearman_return_t ret=  libgearman::protocol::echo(universal, message, workload);
   if (gearman_success(ret))
   {
     PUSH_BLOCKING(universal);
 
-    EchoCheck check(universal, workload, workload_size);
+    EchoCheck check(universal, workload_str, workload_size);
     ret= connection_loop(universal, message, check);
   }
   else
   {
-    gearman_packet_free(&message);
-    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
-    return ret;
+    return universal.error_code();
   }
 
   gearman_packet_free(&message);
@@ -604,8 +634,7 @@ gearman_return_t cancel_job(gearman_universal_st& universal,
   else
   {
     gearman_packet_free(&cancel_packet);
-    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
-    return ret;
+    return universal.error_code();
   }
 
   gearman_packet_free(&cancel_packet);

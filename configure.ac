@@ -6,9 +6,10 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
+m4_include([version.m4])
 AC_REVISION([m4_esyscmd_s([bzr revno])])
 AC_PREREQ([2.63])
-AC_INIT([gearmand],[1.1.7],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],VERSION_NUMBER,[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -96,10 +97,13 @@ AX_ENABLE_LIBHIREDIS
 
 # Checks for programs.
 AC_CHECK_PROGS([DPKG_GENSYMBOLS],[dpkg-gensymbols])
+AC_CHECK_PROGS([OPENSSL],[openssl])
 AC_CHECK_PROGS([PERL],[perl])
 AC_CHECK_PROGS([VALGRIND],['valgrind'])
 AC_CHECK_PROGS([WINE],['wine'])
-AC_PATH_PROG([GPERF],['gperf'])
+AC_PATH_PROG([GPERF],['gperf'],[])
+AS_IF([test -z "$GPERF"],
+      [AC_MSG_ERROR([could not find gperf])]])
 AC_PROG_AWK
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -206,7 +210,6 @@ AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNC([setsockopt],[],[AC_CHECK_LIB([socket],[setsockopt])])
 AC_CHECK_FUNC([bind],[],[AC_CHECK_LIB([bind],[bind])])
 
-
 # Check for the ability to call dlopen (used in libhostile)
 AX_DLOPEN
 
@@ -221,6 +224,8 @@ LT_LIB_M
 
 # Check for CyaSSL
 AX_CHECK_LIBRARY([CYASSL],[cyassl/ssl.h],[cyassl])
+#AC_SUBST([CYASSL])
+#AC_SUBST([CYASSL_LIB])
 AX_ENABLE_LIBMEMCACHED
 
 AC_DEFINE([GEARMAND_BLOBSLAP_WORKER],[1],[Have Gearman Blobslap Worker])

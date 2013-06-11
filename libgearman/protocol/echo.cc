@@ -1,8 +1,9 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- *  Data Differential YATL (i.e. libtest)  library
- *
- *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2013 Data Differential, http://datadifferential.com/
+ *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -34,25 +35,51 @@
  *
  */
 
-#pragma once
+#include "gear_config.h"
+#include <libgearman/common.h>
+#include "libgearman/vector.h"
 
-namespace libtest {
+#include <cstdio>
+#include <cstring>
 
-class fatal : public __test_result
-{
-public:
-  fatal(const char *file, int line, const char *func, ...);
+namespace libgearman {
+namespace protocol {
 
-  fatal(const fatal&);
+  gearman_return_t echo(gearman_universal_st& universal,
+                        gearman_packet_st& message,
+                        const gearman_string_t &workload)
+  {
+    if (gearman_c_str(workload) == NULL)
+    {
+      return gearman_error(universal, GEARMAN_INVALID_ARGUMENT, "workload was NULL");
+    }
 
-  // The following are just for unittesting the exception class
-  static bool is_disabled() throw();
-  static void disable() throw();
-  static void enable() throw();
-  static uint32_t disabled_counter() throw();
-  static void increment_disabled_counter() throw();
+    if (gearman_size(workload) == 0)
+    {
+      return gearman_error(universal, GEARMAN_INVALID_ARGUMENT,  "workload_size was 0");
+    }
 
-private:
-};
+    if (gearman_size(workload) > GEARMAN_MAX_ECHO_SIZE)
+    {
+      return gearman_error(universal, GEARMAN_ARGUMENT_TOO_LARGE,  "workload_size was greater then GEARMAN_MAX_ECHO_SIZE");
+    }
 
-} // namespace libtest
+    if (universal.has_connections() == false)
+    {
+      return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
+    }
+
+    const void *args[1];
+    size_t args_size[1];
+
+    args[0]= gearman_c_str(workload);
+    args_size[0]= gearman_size(workload);
+
+    return gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
+                                      GEARMAN_COMMAND_ECHO_REQ,
+                                      args, args_size, 1);
+  }
+
+} // namespace protocol
+} // namespace libgearman
+

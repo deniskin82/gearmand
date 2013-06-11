@@ -60,6 +60,7 @@
 # include <alloca.h>
 #endif
 
+#pragma GCC diagnostic push
 #ifndef __INTEL_COMPILER
 # pragma GCC diagnostic ignored "-Wold-style-cast"
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
@@ -253,6 +254,7 @@ gearmand_error_t gearmand_log_fatal(const char *position, const char *func, cons
     gearmand_log(position, func, GEARMAND_VERBOSE_FATAL, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
+  abort();
 
   return GEARMAND_ERRNO;
 }
@@ -492,3 +494,4 @@ gearmand_error_t gearmand_log_memory_error(const char *position, const char *fun
 
   return GEARMAND_MEMORY_ALLOCATION_FAILURE;
 }
+#pragma GCC diagnostic pop
