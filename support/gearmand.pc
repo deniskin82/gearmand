@@ -5,6 +5,6 @@ includedir=${prefix}/include
 
 Name: gearmand
 Description: Gearman Server and C Library
-Version: 1.1.7
+Version: 1.1.8
 Libs: -L${libdir} -lgearman
 Cflags: -I${includedir}

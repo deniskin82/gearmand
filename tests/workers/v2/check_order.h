@@ -2,8 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
- *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  Copyright (C) 2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -36,27 +35,8 @@
  *
  */
 
-#pragma once 
+#pragma once
 
-struct gearmand_io_st;
+LIBTEST_API
+gearman_return_t check_order_worker(gearman_job_st *job, void *context);
 
-#include <libgearman-server/struct/connection_list.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct gearmand_connection_list_st gearmand_connection_list_st;
-
-GEARMAN_INTERNAL_API
-void gearmand_connection_list_init(gearmand_connection_list_st *source, gearmand_event_watch_fn *watch_fn, void *watch_context);
-
-/*
-  Get next connection that is ready for I/O.
-*/
-GEARMAN_INTERNAL_API
-gearman_server_con_st *gearmand_ready(gearmand_connection_list_st *gearman);
-
-#ifdef __cplusplus
-}
-#endif
