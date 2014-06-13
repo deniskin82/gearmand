@@ -64,11 +64,11 @@
 /* Define to 1 if you have the `atexit' function. */
 #undef HAVE_ATEXIT
 
-/* Defined if the requested minimum BOOST version is satisfied */
+/* define if the Boost library is available */
 #undef HAVE_BOOST
 
-/* Define to 1 if you have <boost/program_options.hpp> */
-#undef HAVE_BOOST_PROGRAM_OPTIONS_HPP
+/* define if the Boost::PROGRAM_OPTIONS library is available */
+#undef HAVE_BOOST_PROGRAM_OPTIONS
 
 /* Define to 1 if you have the `btowc' function. */
 #undef HAVE_BTOWC
@@ -87,17 +87,8 @@
    don't. */
 #undef HAVE_DECL_STRERROR_R
 
-/* Define to 1 if DL is found */
-#undef HAVE_DL
-
-/* Have dladdr */
-#undef HAVE_DLADDR
-
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
-
-/* Have dlopen */
-#undef HAVE_DLOPEN
 
 /* Define to 1 if you don't have `vprintf' but do have `_doprnt.' */
 #undef HAVE_DOPRNT
@@ -156,9 +147,6 @@
 /* Define to 1 if LIBCURL is found */
 #undef HAVE_LIBCURL
 
-/* Have dlopen */
-#undef HAVE_LIBDL
-
 /* Have libdrizzle */
 #undef HAVE_LIBDRIZZLE
 
@@ -207,6 +195,9 @@
 
 /* Define to 1 if <wchar.h> declares mbstate_t. */
 #undef HAVE_MBSTATE_T
+
+/* Define to 1 if MCHECK is found */
+#undef HAVE_MCHECK
 
 /* If Memcached binary is available */
 #undef HAVE_MEMCACHED_BINARY
@@ -357,6 +348,9 @@
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #undef HAVE_SYSLOG_H
+
+/* Define to 1 if you have the <sys/epoll.h> header file. */
+#undef HAVE_SYS_EPOLL_H
 
 /* Define to 1 if you have the <sys/resource.h> header file. */
 #undef HAVE_SYS_RESOURCE_H

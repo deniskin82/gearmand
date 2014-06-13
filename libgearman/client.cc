@@ -64,10 +64,14 @@ static gearman_client_st *_client_allocate(gearman_client_st *client_shell, bool
   {
     if (is_clone == false)
     {
-#if 0
-      gearman_universal_initialize(client_shell->impl()->universal);
-      gearman_universal_initialize(universal);
-#endif
+      if (getenv("GEARMAN_SERVERS"))
+      {
+        if (gearman_client_add_servers(client->shell(), getenv("GEARMAN_SERVERS")))
+        {
+          gearman_client_free(client->shell());
+          return NULL;
+        }
+      }
     }
 
     return client->shell();
@@ -593,12 +597,14 @@ gearman_return_t gearman_client_add_server(gearman_client_st *client_shell,
 {
   if (client_shell and client_shell->impl())
   {
-    if (gearman_connection_create(client_shell->impl()->universal, host, port) == false)
+    Client* client= client_shell->impl();
+
+    if (gearman_connection_create(client->universal, host, port) == false)
     {
-      assert(client_shell->impl()->universal.error_code() != GEARMAN_SUCCESS);
-      return client_shell->impl()->universal.error_code();
+      assert(client->error_code() != GEARMAN_SUCCESS);
+      return client->error_code();
     }
-    assert(client_shell->impl()->universal.has_connections());
+    assert(client->universal.has_connections());
 
     return GEARMAN_SUCCESS;
   }
@@ -610,8 +616,8 @@ gearman_return_t Client::add_server(const char *host, const char* service_)
 {
   if (gearman_connection_create(universal, host, service_) == false)
   {
-    assert(universal.error_code() != GEARMAN_SUCCESS);
-    return universal.error_code();
+    assert(error_code() != GEARMAN_SUCCESS);
+    return error_code();
   }
 
   return GEARMAN_SUCCESS;
@@ -1451,7 +1457,7 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client_shell
       /* See if there are any connections ready for I/O. */
       while ((client->con= gearman_ready(client->universal)))
       {
-        if (client->con->revents & (POLLOUT | POLLERR | POLLHUP | POLLNVAL))
+        if (client->con->is_revents(POLLOUT | POLLERR | POLLHUP | POLLNVAL))
         {
           /* Socket is ready for writing, continue submitting jobs. */
           for (client->task= client->task_list; client->task;
@@ -1484,7 +1490,7 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client_shell
           }
 
           /* Connection errors are fatal. */
-          if (client->con->revents & (POLLERR | POLLHUP | POLLNVAL))
+          if (client->con->is_revents(POLLERR | POLLHUP | POLLNVAL))
           {
             gearman_error(client->universal, GEARMAN_LOST_CONNECTION, "detected lost connection in _client_run_tasks()");
             client->con->close_socket();
@@ -1493,7 +1499,7 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client_shell
           }
         }
 
-        if ((client->con->revents & POLLIN) == 0)
+        if ((client->con->is_revents(POLLIN)) == false)
         {
           continue;
         }

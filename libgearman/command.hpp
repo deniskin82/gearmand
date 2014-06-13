@@ -1,5 +1,5 @@
 /* C++ code produced by gperf version 3.0.4 */
-/* Command-line: /usr/bin/gperf --compare-strncmp --switch=1 -D --struct-type libgearman/command.gperf  */
+/* Command-line: /bin/gperf --compare-strncmp --switch=1 -D --struct-type libgearman/command.gperf  */
 /* Computed positions: -k'1,$' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \

@@ -18,18 +18,19 @@
 # Description: Gearman is a distributed job system.
 ### END INIT INFO
 
+sysconf=${prefix}/etc/sysconfig/gearmand
+gearmand=${exec_prefix}/sbin/gearmand
+prog=gearmand
+
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-if [ -f /etc/sysconfig/gearmand ]; then
-        . /etc/sysconfig/gearmand
+if [ -f @sysconf@ ]; then
+        . @sysconf@
 fi
 
-[ -z "${PIDFILE}" ] && pidfile="/var/run/gearmand/gearmand.pid"
-[ -z "${LOCKFILE}" ] && lockfile="/var/lock/subsys/gearmand"
-
-gearmand=/usr/sbin/gearmand
-prog=gearmand
+[ -z "${PIDFILE}" ] && pidfile="${prefix}/var/run/gearmand/gearmand.pid"
+[ -z "${LOCKFILE}" ] && lockfile="${prefix}/var/lock/subsys/gearmand"
 
 RETVAL=0
 

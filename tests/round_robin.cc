@@ -91,7 +91,7 @@ static gearman_return_t append_function_WORKER(gearman_job_st* job, void *contex
 static test_return_t queue_add(void *object)
 {
   Context *context= (Context *)object;
-  test_truth(context);
+  ASSERT_TRUE(context);
 
   libgearman::Client client(context->port());
   char job_handle[GEARMAN_JOB_HANDLE_SIZE];
@@ -124,14 +124,14 @@ static test_return_t queue_add(void *object)
 static test_return_t queue_worker(void *object)
 {
   Context *context= (Context *)object;
-  test_truth(context);
+  ASSERT_TRUE(context);
 
   libgearman::Worker worker(context->port());
 
   char buffer[11];
   memset(buffer, 0, sizeof(buffer));
 
-  test_truth(context->run_worker);
+  ASSERT_TRUE(context->run_worker);
 
   gearman_function_t append_function_FN= gearman_function_create(append_function_WORKER);
 
@@ -231,13 +231,13 @@ static gearman_return_t job_retry_WORKER(gearman_job_st* job, void *context_arg)
 static test_return_t _job_retry_TEST(Context *context, Limit& limit)
 {
   gearman_function_t job_retry_FN= gearman_function_create(job_retry_WORKER);
-  std::auto_ptr<worker_handle_st> handle(test_worker_start(context->port(),
-                                                           NULL,
-                                                           __func__,
-                                                           job_retry_FN,
-                                                           &limit,
-                                                           gearman_worker_options_t(),
-                                                           0)); // timeout
+  std::unique_ptr<worker_handle_st> handle(test_worker_start(context->port(),
+                                                             NULL,
+                                                             __func__,
+                                                             job_retry_FN,
+                                                             &limit,
+                                                             gearman_worker_options_t(),
+                                                             0)); // timeout
   libgearman::Client client(context->port());
 
   gearman_return_t rc;

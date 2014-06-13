@@ -1,5 +1,7 @@
+# configure.ac -*- autoconf -*- vim: filetype=config
+#
 # Gearman server and library
-# Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011-2014 Data Differential, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day, Monty Taylor
 # All rights reserved.
 #
@@ -22,14 +24,11 @@ AC_CANONICAL_HOST
 AC_ARG_PROGRAM
 AC_USE_SYSTEM_EXTENSIONS
 
-AM_INIT_AUTOMAKE([1.12 color-tests -Wno-portability subdir-objects foreign tar-ustar serial-tests])
+AM_INIT_AUTOMAKE([1.11 color-tests -Wno-portability subdir-objects foreign tar-ustar])
 
 AC_CONFIG_HEADERS([gear_config.h:gear_config.in])dnl Keep filename to 8.3 for MS-DOS.
 AC_SUBST([AUTOHEADER_FILE],[gear_config.h])
 AC_CONFIG_SRCDIR([libgearman/gearman.cc])
-
-AC_PROG_CC_C99
-AS_IF([test "x${ac_cv_prog_cc_c99}" == "xno"],[AC_MSG_ERROR([No c99 compatible compiler found])])
 
 GEARMAN_LIBRARY_VERSION=8:0:0
 #                       | | |
@@ -46,16 +45,31 @@ GEARMAN_LIBRARY_VERSION=8:0:0
 AC_SUBST([GEARMAN_LIBRARY_VERSION])
 
 LT_PREREQ([2.2])
-LT_INIT
+LT_INIT([dlopen])
 LT_LANG([C++])
+LT_LIB_M
+
+AC_SUBST([lt_cv_dlopen_libs])
+
+AC_PROG_CC_C99
+AS_IF([test "x${ac_cv_prog_cc_c99}" == "xno"],[AC_MSG_ERROR([No c99 compatible compiler found])])
+
+AC_DEFUN([CHECK_CXX0X],[
+          AC_LANG_PUSH([C++])
+          AX_CHECK_COMPILE_FLAG([-std=c++0x],[
+                                 CXXFLAGS="$CXXFLAGS -std=c++0x"])
+          AC_LANG_POP([C++])
+          ])
+CHECK_CXX0X
+
 
 AX_PLATFORM
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 # First look for Boost, maybe for a specific minimum version:
 AC_DEFUN([CHECK_BOOST],
-         [BOOST_REQUIRE([1.39])
-         BOOST_PROGRAM_OPTIONS])
+         [AX_BOOST_BASE([1.39],,[AC_MSG_ERROR(could not find boost)])
+         AX_BOOST_PROGRAM_OPTIONS])
 CHECK_BOOST
 
 m4_include([libhashkit/include.m4])
@@ -102,9 +116,11 @@ AX_ENABLE_LIBHIREDIS
 # Checks for programs.
 AC_CHECK_PROGS([DPKG_GENSYMBOLS],[dpkg-gensymbols])
 AC_CHECK_PROGS([OPENSSL],[openssl])
-AC_CHECK_PROGS([PERL],[perl])
 AC_CHECK_PROGS([VALGRIND],['valgrind'])
 AC_CHECK_PROGS([WINE],['wine'])
+AC_CHECK_PROGS([RPMBUILD],[rpmbuild --nocheck])
+AC_CHECK_PROGS([RPMDEV_SETUPTREE],[rpmdev-setuptree])
+AC_CHECK_PROGS([RPM],[rpm])
 AC_PATH_PROG([GPERF],['gperf'],[])
 AS_IF([test -z "$GPERF"],
       [AC_MSG_ERROR([could not find gperf])]])
@@ -144,6 +160,7 @@ AC_CHECK_HEADERS_ONCE([stdio.h])
 AC_CHECK_HEADERS_ONCE([stdlib.h])
 AC_CHECK_HEADERS_ONCE([string.h])
 AC_CHECK_HEADERS_ONCE([strings.h])
+AC_CHECK_HEADERS_ONCE([sys/epoll.h])
 AC_CHECK_HEADERS_ONCE([sys/resource.h])
 AC_CHECK_HEADERS_ONCE([sys/socket.h])
 AC_CHECK_HEADERS_ONCE([sys/stat.h])
@@ -214,9 +231,6 @@ AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNC([setsockopt],[],[AC_CHECK_LIB([socket],[setsockopt])])
 AC_CHECK_FUNC([bind],[],[AC_CHECK_LIB([bind],[bind])])
 
-# Check for the ability to call dlopen (used in libhostile)
-AX_DLOPEN
-
 # Check for -lrt
 AC_CHECK_LIB([rt],[clock_gettime],
              [AX_SAVE_FLAGS
@@ -228,9 +242,6 @@ AC_CHECK_LIB([rt],[clock_gettime],
               AC_DEFINE([HAVE_LIBRT],[1],[Have -lrt])
              ],
              [AC_CHECK_FUNCS([clock_gettime])])
-
-# Check for -lm
-LT_LIB_M
 
 # Check for OPENSSL
 AX_CHECK_OPENSSL([have_openssl=yes
@@ -283,10 +294,18 @@ AS_IF([test "x${TARGET_LINUX}" = "xtrue"],
       [AC_DEFINE([BUILD_LIBHOSTILE],[1],[Build libhostile])],[AC_DEFINE([BUILD_LIBHOSTILE],[0],[Build libhostile])])
 AM_CONDITIONAL([TARGET_HOSTILE],[test "x${TARGET_LINUX}" = "xtrue"])
 
-AX_PTHREAD(, [AC_MSG_ERROR(could not find libpthread)])
-AX_PTHREAD_TIMEDJOIN_NP
+AC_DEFUN([CHECK_FOR_PTHREAD_AND_SASL],
+         [AC_LANG_PUSH([C++])
+         AX_PTHREAD(, [AC_MSG_ERROR(could not find Posix Pthread support)])
+         AX_PTHREAD_TIMEDJOIN_NP
+         AC_LANG_POP([C++])
+         ])
+CHECK_FOR_PTHREAD_AND_SASL
+
 AX_ENDIAN
 AX_HEX_VERSION([LIBGEARMAN],[$VERSION])
+AC_SUBST([RPM_RELEASE],[1])
+
 AX_HARDEN_COMPILER_FLAGS
 
 AM_CONDITIONAL([TARGET_MINGW],[test "x${MINGW}" = "xtrue"])
@@ -298,13 +317,12 @@ AS_IF([test "x$enable_shared" = "xyes"],
 AM_CONDITIONAL([SHARED_ENABLED],[test "x$enable_shared" = "xyes"])
 
 AC_CONFIG_FILES([Makefile
-                 man/Makefile
                  docs/conf.py
                  libgearman-1.0/version.h
                  scripts/gearmand
-                 scripts/gearmand-init
                  scripts/gearmand.xml
                  scripts/smf_install.sh
+                 support/gearmand.init
                  support/gearmand.pc
                  support/gearmand.spec])
 
@@ -337,6 +355,7 @@ echo "   * cyassl found:              $have_cyassl"
 echo "   * openssl found:             $have_openssl"
 echo "   * make -j:                   $enable_jobserver"
 echo "   * VCS checkout:              $ac_cv_vcs_checkout"
+echo "   * sphinx-build:              $SPHINXBUILD"
 echo ""
 echo "---"
 

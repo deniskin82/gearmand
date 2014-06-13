@@ -39,7 +39,7 @@
 
 struct _worker_function_st;
 
-_worker_function_st *make(gearman_vector_st* namespace_arg,
-                          const char *name, size_t name_length, 
-                          const gearman_function_t &function_arg, 
-                          void *context_arg);
+_worker_function_st *make(gearman_vector_st*,
+                          const char*, size_t, 
+                          const gearman_function_t&, 
+                          void*, const int);

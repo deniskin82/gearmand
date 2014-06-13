@@ -32,6 +32,7 @@ noinst_HEADERS+= libhostile/send.h
 noinst_HEADERS+= libhostile/setsockopt.h
 noinst_HEADERS+= libhostile/socket.h
 noinst_HEADERS+= libhostile/socket_server.h
+noinst_HEADERS+= libhostile/sync.h
 noinst_HEADERS+= libhostile/visibility.h
 noinst_HEADERS+= libhostile/write.h
 
@@ -49,7 +50,7 @@ libhostile_libhostile_la_CXXFLAGS+= @PTHREAD_CFLAGS@
 libhostile_libhostile_la_SOURCES+= libhostile/initialize.c
 
 if TARGET_HOSTILE
-libhostile_libhostile_la_LIBADD+= @DL_LIB@
+libhostile_libhostile_la_LIBADD+= @lt_cv_dlopen_libs@
 libhostile_libhostile_la_LIBADD+= @RT_LIB@
 libhostile_libhostile_la_LIBADD+= @PTHREAD_LIBS@
 
