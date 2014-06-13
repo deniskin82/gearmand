@@ -46,8 +46,10 @@
  * @return On success, a pointer to the (possibly allocated) structure. On
  *  failure this will be NULL.
  */
-gearman_task_st *gearman_task_internal_create(gearman_client_st& client,
+gearman_task_st *gearman_task_internal_create(Client* client,
                                               gearman_task_st *task);
+
+void gearman_task_free(Task* task);
 
 void gearman_task_clear_fn(gearman_task_st *task);
 

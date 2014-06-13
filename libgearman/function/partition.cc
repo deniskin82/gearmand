@@ -45,30 +45,32 @@
 /*
   Partition function
 */
-gearman_function_error_t Partition::callback(gearman_job_st* job, void *context_arg)
+gearman_function_error_t Partition::callback(gearman_job_st* job_shell, void *context_arg)
 {
+  Job* job= job_shell->impl();
+
   if (gearman_job_is_map(job))
   {
     gearman_job_build_reducer(job, aggregator_fn);
   }
 
-  gearman_return_t error= _partition_fn(job, context_arg);
+  gearman_return_t error= _partition_fn(job_shell, context_arg);
   switch (error)
   {
   case GEARMAN_FATAL:
-    job->error_code= GEARMAN_FATAL;
+    job->_error_code= GEARMAN_FATAL;
     return GEARMAN_FUNCTION_FATAL;
 
   case GEARMAN_SHUTDOWN:
-    job->error_code= GEARMAN_SUCCESS;
+    job->_error_code= GEARMAN_SUCCESS;
     return GEARMAN_FUNCTION_SHUTDOWN;
 
   case GEARMAN_ERROR:
-    job->error_code= GEARMAN_ERROR;
+    job->_error_code= GEARMAN_ERROR;
     return GEARMAN_FUNCTION_ERROR;
 
   case GEARMAN_SUCCESS:
-    job->error_code= GEARMAN_SUCCESS;
+    job->_error_code= GEARMAN_SUCCESS;
     return GEARMAN_FUNCTION_SUCCESS;
 
   case GEARMAN_IO_WAIT:
@@ -119,6 +121,7 @@ gearman_function_error_t Partition::callback(gearman_job_st* job, void *context_
   case GEARMAN_INVALID_ARGUMENT:
   case GEARMAN_IN_PROGRESS:
   case GEARMAN_INVALID_SERVER_OPTION:
+  case GEARMAN_JOB_NOT_FOUND:
   case GEARMAN_MAX_RETURN:
     break;
   }

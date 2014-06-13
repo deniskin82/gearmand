@@ -316,13 +316,15 @@ bool gearmand_exceptions(gearmand_st *gearmand)
 }
 
 gearmand_error_t gearmand_port_add(gearmand_st *gearmand, const char *port,
-                                   gearmand_connection_add_fn *function)
+                                   gearmand_connection_add_fn *function,
+                                   gearmand_connection_remove_fn* remove_)
 {
   assert(gearmand);
   gearmand->_port_list.resize(gearmand->_port_list.size() +1);
 
   strncpy(gearmand->_port_list.back().port, port, NI_MAXSERV);
-  gearmand->_port_list.back().add_fn= function;
+  gearmand->_port_list.back().add_fn(function);
+  gearmand->_port_list.back().remove_fn(remove_);
 
   return GEARMAND_SUCCESS;
 }
@@ -379,7 +381,7 @@ gearmand_error_t gearmand_run(gearmand_st *gearmand)
     uint32_t x= 0;
     do
     {
-      gearmand->ret= gearmand_thread_create(gearmand);
+      gearmand->ret= gearmand_thread_create(*gearmand);
       if (gearmand->ret != GEARMAND_SUCCESS)
         return gearmand->ret;
       x++;
@@ -859,15 +861,7 @@ static void _listen_event(int event_fd, short events __attribute__ ((unused)), v
     Gearmand()->ret= gearmand_perror(local_error, "accept");
     return;
   }
-  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "accept() %d", fd);
-
-  {
-    int flags= 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &flags, sizeof(flags)) == -1)
-    {
-      gearmand_perror(errno, "setsockopt(SO_KEEPALIVE)");
-    }
-  }
+  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "accept() fd:%d", fd);
 
   /* 
     Since this is numeric, it should never fail. Even if it did we don't want to really error from it.
@@ -885,7 +879,15 @@ static void _listen_event(int event_fd, short events __attribute__ ((unused)), v
 
   gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Accepted connection from %s:%s", host, port_str);
 
-  gearmand_error_t ret= gearmand_con_create(Gearmand(), fd, host, port_str, port->add_fn);
+  {
+    int flags= 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &flags, sizeof(flags)) == -1)
+    {
+      gearmand_log_perror(GEARMAN_DEFAULT_LOG_PARAM, errno, "%s:%s setsockopt(SO_KEEPALIVE)", host, port_str);
+    }
+  }
+
+  gearmand_error_t ret= gearmand_con_create(Gearmand(), fd, host, port_str, port);
   if (ret == GEARMAND_MEMORY_ALLOCATION_FAILURE)
   {
     gearmand_sockfd_close(fd);
@@ -913,21 +915,19 @@ static gearmand_error_t _wakeup_init(gearmand_st *gearmand)
     return gearmand_fatal_perror(errno, "pipe(gearmand->wakeup_fd)");
   }
 
-  int returned_flags;
-  if ((returned_flags= fcntl(gearmand->wakeup_fd[0], F_GETFL, 0)) == -1)
+  gearmand_error_t local_ret;
+  if ((local_ret= gearmand_sockfd_nonblock(gearmand->wakeup_fd[0])))
   {
-    return gearmand_fatal_perror(errno, "fcntl:F_GETFL");
-  }
-
-  if (fcntl(gearmand->wakeup_fd[0], F_SETFL, returned_flags | O_NONBLOCK) == -1)
-  {
-    return gearmand_fatal_perror(errno, "fcntl(F_SETFL)");
+    return local_ret;
   }
 #endif
 
   event_set(&(gearmand->wakeup_event), gearmand->wakeup_fd[0],
             EV_READ | EV_PERSIST, _wakeup_event, gearmand);
-  event_base_set(gearmand->base, &(gearmand->wakeup_event));
+  if (event_base_set(gearmand->base, &(gearmand->wakeup_event)) == -1)
+  {
+    gearmand_perror(errno, "event_base_set");
+  }
 
   return GEARMAND_SUCCESS;
 }

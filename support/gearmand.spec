@@ -1,6 +1,6 @@
 Summary: Gearman Server and C Library
 Name: gearmand
-Version: 1.1.8
+Version: 1.1.9
 Release: 1
 License: BSD
 Group: System Environment/Libraries
@@ -134,6 +134,7 @@ fi
 %{_includedir}/libgearman-1.0/interface/status.h
 %{_includedir}/libgearman-1.0/interface/task.h
 %{_includedir}/libgearman-1.0/interface/client.h
+%{_includedir}/libgearman-1.0/interface/job.h
 %{_includedir}/libgearman-1.0/interface/worker.h
 %{_includedir}/libgearman-1.0/job.h
 %{_includedir}/libgearman-1.0/job_handle.h
@@ -157,6 +158,7 @@ fi
 %{_includedir}/libgearman-1.0/worker.h
 %{_libdir}/pkgconfig/gearmand.pc
 %{_libdir}/libgearman.so
+%{_libdir}/libgearman.a
 %{_mandir}/man3/gearman_actions_t.3.gz
 %{_mandir}/man3/gearman_allocator_t.3.gz
 %{_mandir}/man3/gearman_argument_make.3.gz

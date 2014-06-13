@@ -92,6 +92,43 @@ struct gearman_packet_st
 
   void free__data();
 
+  bool failed() const
+  {
+    if (command == GEARMAN_COMMAND_WORK_FAIL)
+    {
+      return true;
+    }
+
+    return false;
+  }
+
+  size_t size() const
+  {
+    return data_size;
+  }
+
+  const char* value(size_t& length_) const
+  {
+    length_= data_size;
+
+    if (length_)
+    {
+      return (const char*)data;
+    }
+
+    return NULL;
+  }
+
+  const char* value() const
+  {
+    if (data_size)
+    {
+      return (const char*)data;
+    }
+
+    return NULL;
+  }
+
   void reset()
   {
     if (args != args_buffer and args)

@@ -60,8 +60,8 @@ namespace
 #if defined(HAVE_PTHREAD_TIMEDJOIN_NP) && HAVE_PTHREAD_TIMEDJOIN_NP
 bool fill_timespec(struct timespec& ts)
 {
-#if defined(HAVE_LIBRT) && HAVE_LIBRT
-  if (HAVE_LIBRT) // This won't be called on OSX, etc,...
+#if defined(HAVE_CLOCK_GETTIME) && HAVE_CLOCK_GETTIME
+  if (HAVE_CLOCK_GETTIME) // This won't be called on OSX, etc,...
   {
     if (clock_gettime(CLOCK_REALTIME, &ts) == -1) 
     {
@@ -159,21 +159,38 @@ namespace {
 
 }
 
+gearmand_thread_st::gearmand_thread_st(gearmand_st& gearmand_):
+  is_thread_lock(false),
+  is_wakeup_event(false),
+  count(0),
+  dcon_count(0),
+  dcon_add_count(0),
+  free_dcon_count(0),
+  _gearmand(gearmand_),
+  next(NULL),
+  prev(NULL),
+  base(NULL),
+  dcon_list(NULL),
+  dcon_add_list(NULL),
+  free_dcon_list(0)
+{
+}
+
 /** @} */
 
 /*
  * Public definitions
  */
 
-gearmand_error_t gearmand_thread_create(gearmand_st *gearmand)
+gearmand_error_t gearmand_thread_create(gearmand_st& gearmand)
 {
-  gearmand_thread_st* thread= new (std::nothrow) gearmand_thread_st;
+  gearmand_thread_st* thread= new (std::nothrow) gearmand_thread_st(gearmand);
   if (thread == NULL)
   {
     return gearmand_merror("new", gearmand_thread_st, 1);
   }
 
-  if (! gearman_server_thread_init(gearmand_server(gearmand), &(thread->server_thread),
+  if (! gearman_server_thread_init(gearmand_server(&gearmand), &(thread->server_thread),
                                    _log, thread, gearmand_connection_watch))
   {
     delete thread;
@@ -198,9 +215,9 @@ gearmand_error_t gearmand_thread_create(gearmand_st *gearmand)
 
   /* If we have no threads, we still create a fake thread that uses the main
      libevent instance. Otherwise create a libevent instance for each thread. */
-  if (gearmand->threads == 0)
+  if (gearmand.threads == 0)
   {
-    thread->base= gearmand->base;
+    thread->base= gearmand.base;
   }
   else
   {
@@ -224,12 +241,12 @@ gearmand_error_t gearmand_thread_create(gearmand_st *gearmand)
   }
 
   /* If we are not running multi-threaded, just return the thread context. */
-  if (gearmand->threads == 0)
+  if (gearmand.threads == 0)
   {
     return GEARMAND_SUCCESS;
   }
 
-  thread->count= gearmand->thread_count;
+  thread->count= gearmand.thread_count;
 
   int pthread_ret= pthread_mutex_init(&(thread->lock), NULL);
   if (pthread_ret != 0)
@@ -322,7 +339,7 @@ void gearmand_thread_free(gearmand_thread_st *thread)
     {
       gearmand_con_st* dcon= thread->dcon_add_list;
       thread->dcon_add_list= dcon->next;
-      gearmand_sockfd_close(dcon->fd);
+      dcon->close_socket();
       delete dcon;
     }
 
@@ -488,22 +505,19 @@ static gearmand_error_t _wakeup_init(gearmand_thread_st *thread)
     return gearmand_perror(errno, "pipe");
   }
 
-  int ret= fcntl(thread->wakeup_fd[0], F_GETFL, 0);
-  if (ret == -1)
+  gearmand_error_t local_ret;
+  if ((local_ret= gearmand_sockfd_nonblock(thread->wakeup_fd[0])))
   {
-    return gearmand_perror(errno, "fcntl(F_GETFL)");
-  }
-
-  ret= fcntl(thread->wakeup_fd[0], F_SETFL, ret | O_NONBLOCK);
-  if (ret == -1)
-  {
-    return gearmand_perror(errno, "fcntl(F_SETFL)");
+    return local_ret;
   }
 #endif
 
   event_set(&(thread->wakeup_event), thread->wakeup_fd[0], EV_READ | EV_PERSIST,
             _wakeup_event, thread);
-  event_base_set(thread->base, &(thread->wakeup_event));
+  if (event_base_set(thread->base, &(thread->wakeup_event)) == -1)
+  {
+    gearmand_perror(errno, "event_base_set");
+  }
 
   if (event_add(&(thread->wakeup_event), NULL) < 0)
   {

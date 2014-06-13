@@ -65,7 +65,7 @@ void gearman_log(gearman_universal_st& gearman, gearman_verbose_t verbose,
 /**
  * Log an info message, see gearman_log() for argument details.
  */
-void gearman_log_info(gearman_universal_st& gearman, const char *format, ...);
+void gearman_log_info(gearman_universal_st&, const char *format, ...);
 
 /**
  * Log a debug message, see gearman_log() for argument details.

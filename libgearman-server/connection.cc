@@ -47,30 +47,31 @@
 
 #include <string.h>
 #include <errno.h>
-#include <assert.h>
+#include <cassert>
+#include <algorithm> 
 
 static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thread, gearmand_con_st *dcon,
-                                                  gearmand_error_t *ret);
+                                                  gearmand_error_t& ret);
 
 /*
  * Public definitions
  */
 
-gearman_server_con_st *gearman_server_con_add(gearman_server_thread_st *thread, gearmand_con_st *dcon, gearmand_error_t *ret)
+gearman_server_con_st *gearman_server_con_add(gearman_server_thread_st *thread, gearmand_con_st *dcon, gearmand_error_t& ret)
 {
   gearman_server_con_st *con= _server_con_create(thread, dcon, ret);
   if (con)
   {
-    if ((*ret= gearman_io_set_fd(&(con->con), dcon->fd)) != GEARMAND_SUCCESS)
+    if ((ret= gearman_io_set_fd(&(con->con), dcon->fd)) != GEARMAND_SUCCESS)
     {
       gearman_server_con_free(con);
       return NULL;
     }
 
-    *ret= gearmand_io_set_events(con, POLLIN);
-    if (*ret != GEARMAND_SUCCESS)
+    ret= gearmand_io_set_events(con, POLLIN);
+    if (ret != GEARMAND_SUCCESS)
     {
-      gearmand_gerror("gearmand_io_set_events", *ret);
+      gearmand_gerror("gearmand_io_set_events", ret);
       gearman_server_con_free(con);
       return NULL;
     }
@@ -81,7 +82,7 @@ gearman_server_con_st *gearman_server_con_add(gearman_server_thread_st *thread, 
 
 static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thread,
                                                   gearmand_con_st *dcon,
-                                                  gearmand_error_t *ret)
+                                                  gearmand_error_t& ret)
 {
   gearman_server_con_st *con;
 
@@ -95,7 +96,7 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
     con= new (std::nothrow) gearman_server_con_st;
     if (con == NULL)
     {
-      *ret= gearmand_perror(errno, "new() build_gearman_server_con_st");
+      ret= gearmand_perror(errno, "new() build_gearman_server_con_st");
       return NULL;
     }
   }
@@ -104,7 +105,7 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
   if (con == NULL)
   {
     gearmand_error("Neigther an allocated gearman_server_con_st() or free listed could be found");
-    *ret= GEARMAND_MEMORY_ALLOCATION_FAILURE;
+    ret= GEARMAND_MEMORY_ALLOCATION_FAILURE;
     return NULL;
   }
 
@@ -148,6 +149,7 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
   con->timeout_event= NULL;
 
   con->protocol= NULL;
+  con->_ssl= NULL;
 
   int error;
   if ((error= pthread_mutex_lock(&thread->lock)) == 0)
@@ -158,7 +160,7 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
       gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
       gearman_server_con_free(con);
 
-      *ret= GEARMAND_ERRNO;
+      ret= GEARMAND_ERRNO;
       return NULL;
     }
   }
@@ -168,7 +170,7 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
     gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
     gearman_server_con_free(con);
 
-    *ret= GEARMAND_ERRNO;
+    ret= GEARMAND_ERRNO;
     return NULL;
   }
 
@@ -204,6 +206,17 @@ void gearman_server_con_free(gearman_server_con_st *con)
   gearman_server_thread_st *thread= con->thread;
   con->_host= NULL;
   con->_port= NULL;
+
+  // Correct location?
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+  if (con->_ssl)
+  {
+    CyaSSL_shutdown(con->_ssl);
+    CyaSSL_free(con->_ssl);
+    con->_ssl= NULL;
+  }
+#endif
+
 
   gearman_server_con_delete_timeout(con);
 
@@ -248,7 +261,12 @@ void gearman_server_con_free(gearman_server_con_st *con)
 
   if (con->timeout_event != NULL)
   {
-    event_del(con->timeout_event);
+    if (event_del(con->timeout_event) == -1)
+    {
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, errno, "calling event_del() on timeout_event failed");
+    }
+    free(con->timeout_event);
+    con->timeout_event= NULL;
   }
 
   if (con->proc_list)
@@ -305,16 +323,18 @@ const char *gearman_server_con_id(gearman_server_con_st *con)
   return con->id;
 }
 
-void gearman_server_con_set_id(gearman_server_con_st *con, char *id,
-                               size_t size)
+void gearman_server_con_set_id(gearman_server_con_st *con,
+                               const char *id,
+                               const size_t size)
 {
-  if (size >= GEARMAND_SERVER_CON_ID_SIZE)
-  {
-    size= GEARMAND_SERVER_CON_ID_SIZE - 1;
-  }
+  size_t min_size= std::min(size, size_t(GEARMAND_SERVER_CON_ID_SIZE -1));
 
-  memcpy(con->id, id, size);
-  con->id[size]= 0;
+  memcpy(con->id, id, min_size);
+  con->id[min_size]= 0;
+
+  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
+                     "identifier set to %.*s", 
+                     min_size, con->id);
 }
 
 void gearman_server_con_free_worker(gearman_server_con_st *con,
@@ -685,7 +705,10 @@ gearmand_error_t gearman_server_con_add_job_timeout(gearman_server_con_st *con, 
             return gearmand_merror("malloc(sizeof(struct event)", struct event, 1);
           }
           timeout_set(con->timeout_event, _server_job_timeout, job);
-          event_base_set(dcon->thread->base, con->timeout_event);
+          if (event_base_set(dcon->thread->base, con->timeout_event) == -1)
+          {
+            gearmand_perror(errno, "event_base_set");
+          }
         }
 
         /* XXX Right now, if a worker has diff timeouts for functions I think
@@ -712,6 +735,7 @@ void gearman_server_con_delete_timeout(gearman_server_con_st *con)
   if (con->timeout_event)
   {
     timeout_del(con->timeout_event);
+    free(con->timeout_event);
     con->timeout_event= NULL;
   }
 }

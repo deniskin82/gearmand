@@ -116,6 +116,26 @@ gearmand_error_t gearmand_initialize_thread_logging(const char *identity)
   return GEARMAND_INVALID_ARGUMENT;
 }
 
+static gearmand_error_t __errno_to_gearmand_error_t(int local_errno)
+{
+  gearmand_error_t error_to_report= GEARMAND_ERRNO;
+
+  switch (local_errno)
+  {
+  case ENOMEM:
+    error_to_report= GEARMAND_MEMORY_ALLOCATION_FAILURE;
+
+  case ECONNRESET:
+  case EHOSTDOWN:
+    error_to_report= GEARMAND_LOST_CONNECTION;
+
+  default:
+    break;
+  }
+
+  return error_to_report;
+}
+
 /**
  * Log a message.
  *
@@ -254,7 +274,7 @@ gearmand_error_t gearmand_log_fatal(const char *position, const char *func, cons
     gearmand_log(position, func, GEARMAND_VERBOSE_FATAL, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
-  abort();
+  gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN_GRACEFUL);
 
   return GEARMAND_ERRNO;
 }
@@ -303,20 +323,7 @@ gearmand_error_t gearmand_log_fatal_perror(const char *position, const char *fun
     }
   }
 
-  switch (local_errno)
-  {
-  case ENOMEM:
-    return GEARMAND_MEMORY_ALLOCATION_FAILURE;
-
-  case ECONNRESET:
-  case EHOSTDOWN:
-    return GEARMAND_LOST_CONNECTION;
-
-  default:
-    break;
-  }
-
-  return GEARMAND_ERRNO;
+  return __errno_to_gearmand_error_t(local_errno);
 }
 
 gearmand_error_t gearmand_log_error(const char *position, const char *function, const char *format, ...)
@@ -415,20 +422,47 @@ gearmand_error_t gearmand_log_perror(const char *position, const char *function,
     }
   }
 
-  switch (local_errno)
+  return __errno_to_gearmand_error_t(local_errno);
+}
+
+gearmand_error_t gearmand_log_perror_warn(const char *position, const char *function, const int local_errno, const char *format, ...)
+{
+  if (not Gearmand() or (Gearmand()->verbose >= GEARMAND_VERBOSE_WARN))
   {
-  case ENOMEM:
-    return GEARMAND_MEMORY_ALLOCATION_FAILURE;
+    char* message_buffer= NULL;
+    {
+      va_list args;
+      va_start(args, format);
 
-  case ECONNRESET:
-  case EHOSTDOWN:
-    return GEARMAND_LOST_CONNECTION;
+      size_t ask= snprintf(0, 0, format);
+      ask++; // for null
+      message_buffer= (char*)alloca(sizeof(char) * ask);
+      vsnprintf(message_buffer, ask, format, args);
 
-  default:
-    break;
+      va_end(args);
+    }
+
+    const char *errmsg_ptr;
+    char errmsg[GEARMAN_MAX_ERROR_SIZE]; 
+    errmsg[0]= 0; 
+
+#ifdef STRERROR_R_CHAR_P
+    errmsg_ptr= strerror_r(local_errno, errmsg, sizeof(errmsg));
+#else
+    strerror_r(local_errno, errmsg, sizeof(errmsg));
+    errmsg_ptr= errmsg;
+#endif
+    if (message_buffer)
+    {
+      gearmand_log_warning(position, function, "%s(%s)", message_buffer, errmsg_ptr);
+    }
+    else
+    {
+      gearmand_log_warning(position, function, "%s", errmsg_ptr);
+    }
   }
 
-  return GEARMAND_ERRNO;
+  return __errno_to_gearmand_error_t(local_errno);
 }
 
 gearmand_error_t gearmand_log_gerror(const char *position, const char *function, const gearmand_error_t rc, const char *format, ...)

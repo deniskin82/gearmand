@@ -42,8 +42,3 @@
 #endif
 
 #include "configmake.h"
-
-#define CA_CERT_PEM GEARMAND_CA_CERTIFICATE
-#define CERT_PEM GEARMAND_CLIENT_PEM
-#define CERT_KEY_PEM GEARMAND_CLIENT_PEM
-

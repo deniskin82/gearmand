@@ -47,6 +47,7 @@
 #include <libgearman-server/common.h>
 #include <libgearman/strcommand.h>
 #include <libgearman-server/packet.h>
+#include "libgearman/strcommand.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -103,9 +104,9 @@ public:
     return false;
   }
 
-  void notify(gearman_server_con_st *)
+  void notify(gearman_server_con_st* connection)
   {
-    gearmand_info("Gear connection disconnected");
+    gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Gear connection disconnected: %s:%s", connection->host(), connection->port());
   }
 
   size_t unpack(gearmand_packet_st *packet,
@@ -114,7 +115,7 @@ public:
                 gearmand_error_t& ret_ptr)
   {
     size_t used_size;
-    gearmand_info("Gear unpack");
+    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Gear unpack");
 
     if (packet->args_size == 0)
     {
@@ -230,29 +231,59 @@ public:
       }
     }
 
-    if (packet->command == GEARMAN_COMMAND_ECHO_RES)
+    if (packet->command == GEARMAN_COMMAND_ECHO_REQ and packet->data_size)
     {
       gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
-                         "GEAR length: %" PRIu64 " gearmand_command_t: %s echo: %.*s",
-                         uint64_t(packet->data_size),
+                         "GEAR %s length: %" PRIu64,
+                         gearman_strcommand(packet->command),
+                         uint64_t(packet->data_size));
+    }
+    else if (packet->command == GEARMAN_COMMAND_TEXT and packet->data_size)
+    {
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
+                         "GEAR %s text: %.*s",
                          gearman_strcommand(packet->command),
                          int(packet->data_size),
                          packet->data);
     }
-    else if (packet->command == GEARMAN_COMMAND_TEXT)
+    else if (packet->command == GEARMAN_COMMAND_OPTION_REQ and packet->arg_size[0])
     {
       gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
-                         "GEAR length: %" PRIu64 " gearmand_command_t: %s text: %.*s",
-                         uint64_t(packet->data_size),
+                         "GEAR %s option: %.*s",
                          gearman_strcommand(packet->command),
+                         int(packet->arg_size[0]),
+                         packet->arg[0]);
+    }
+    else if (packet->command == GEARMAN_COMMAND_WORK_EXCEPTION and packet->data_size)
+    {
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
+                         "GEAR %s handle: %.*s exception: %.*s",
+                         gearman_strcommand(packet->command),
+                         int(packet->arg_size[0]),
+                         packet->arg[0],
                          int(packet->data_size),
                          packet->data);
+    }
+    else if (packet->command == GEARMAN_COMMAND_WORK_FAIL and packet->arg_size[0])
+    {
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
+                         "GEAR %s handle: %.*s",
+                         gearman_strcommand(packet->command),
+                         int(packet->arg_size[0]),
+                         packet->arg[0]);
+    }
+    else if (packet->command == GEARMAN_COMMAND_SET_CLIENT_ID and packet->arg_size[0])
+    {
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
+                         "GEAR %s identifier: %.*s",
+                         gearman_strcommand(packet->command),
+                         int(packet->arg_size[0]),
+                         packet->arg[0]);
     }
     else
     {
       gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
-                         "GEAR length: %" PRIu64 " gearmand_command_t: %s",
-                         uint64_t(packet->data_size),
+                         "GEAR %s",
                          gearman_strcommand(packet->command));
     }
 
@@ -265,20 +296,25 @@ public:
               void *data, const size_t data_size,
               gearmand_error_t& ret_ptr)
   {
-    if (packet->command == GEARMAN_COMMAND_ECHO_RES)
+    if (packet->command == GEARMAN_COMMAND_ECHO_RES and packet->data_size)
     {
       gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
-                         "GEAR length: %" PRIu64 " gearmand_command_t: %s echo: %.*",
-                         uint64_t(packet->data_size),
+                         "GEAR %s length: %" PRIu64,
                          gearman_strcommand(packet->command),
-                         int(packet->data_size),
-                         packet->data);
+                         uint64_t(packet->data_size));
+    }
+    else if (packet->command == GEARMAN_COMMAND_OPTION_RES and packet->arg_size[0])
+    {
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
+                         "GEAR %s option: %.*s",
+                         gearman_strcommand(packet->command),
+                         int(packet->arg_size[0]),
+                         packet->arg[0]);
     }
     else
     {
       gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
-                         "GEAR length: %" PRIu64 " gearmand_command_t: %s",
-                         uint64_t(packet->data_size),
+                         "GEAR %s",
                          gearman_strcommand(packet->command));
     }
 
@@ -305,6 +341,21 @@ private:
 
 static Geartext gear_context;
 
+static gearmand_error_t _gear_con_remove(gearman_server_con_st* connection)
+{
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+  if (connection->_ssl)
+  {
+    CyaSSL_shutdown(connection->_ssl);
+    CyaSSL_free(connection->_ssl);
+    connection->_ssl= NULL;
+  }
+#else
+  (void)connection;
+#endif
+  return GEARMAND_SUCCESS;
+}
+
 static gearmand_error_t _gear_con_add(gearman_server_con_st *connection)
 {
 #if defined(HAVE_CYASSL) && HAVE_CYASSL
@@ -312,31 +363,31 @@ static gearmand_error_t _gear_con_add(gearman_server_con_st *connection)
   {
     if ((connection->_ssl= CyaSSL_new(Gearmand()->ctx_ssl())) == NULL)
     {
-      return gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_new() failed");
+      return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_MEMORY_ALLOCATION_FAILURE, "CyaSSL_new() failed to return a valid object");
     }
 
-    CyaSSL_set_fd(connection->_ssl, connection->con.fd);
+    CyaSSL_set_fd(connection->_ssl, connection->con.fd());
 
-    bool connecting= true;
-    while (connecting)
+    if (CyaSSL_accept(connection->_ssl) != SSL_SUCCESS)
     {
-      if (CyaSSL_accept(connection->_ssl) == SSL_SUCCESS)
-      {
-        connecting= false;
-        break;
-      }
-
       if (CyaSSL_get_error(connection->_ssl, 0) != SSL_ERROR_WANT_READ)
       {
         int cyassl_error= CyaSSL_get_error(connection->_ssl, 0);
         char cyassl_error_buffer[1024]= { 0 };
         CyaSSL_ERR_error_string(cyassl_error, cyassl_error_buffer);
-        return gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "%s(%d)", cyassl_error_buffer, cyassl_error);
+        return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_LOST_CONNECTION, "%s:%s %s(%d)", 
+                                   connection->host(),
+                                   connection->port(),
+                                   cyassl_error_buffer, cyassl_error);
       }
     }
-    gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "GearSSL connection made: %d", connection->con.fd);
+    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "GearSSL connection made: %s:%s", connection->host(), connection->port());
   }
+  else
 #endif
+  {
+    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Gear connection made: %s:%s", connection->host(), connection->port());
+  }
 
   connection->set_protocol(&gear_context);
 
@@ -349,6 +400,9 @@ namespace protocol {
 Gear::Gear() :
   Plugin("Gear"),
   _port(GEARMAN_DEFAULT_TCP_PORT_STRING),
+  _ssl_ca_file(GEARMAND_CA_CERTIFICATE),
+  _ssl_certificate(GEARMAND_SERVER_PEM),
+  _ssl_key(GEARMAND_SERVER_KEY),
   opt_ssl(false)
   {
     command_line_options().add_options()
@@ -356,6 +410,12 @@ Gear::Gear() :
        "Port the server should listen on.")
       ("ssl", boost::program_options::bool_switch(&opt_ssl)->default_value(false),
        "Enable ssl connections.")
+      ("ssl-ca-file", boost::program_options::value(&_ssl_ca_file),
+       "CA file.")
+      ("ssl-certificate", boost::program_options::value(&_ssl_certificate),
+       "SSL certificate.")
+      ("ssl-key", boost::program_options::value(&_ssl_key),
+       "SSL key for certificate.")
       ;
   }
 
@@ -400,26 +460,29 @@ gearmand_error_t Gear::start(gearmand_st *gearmand)
   {
     gearmand->init_ssl();
 
-    if (CyaSSL_CTX_load_verify_locations(gearmand->ctx_ssl(), GEARMAND_CA_CERTIFICATE, 0) != SSL_SUCCESS)
+    if (CyaSSL_CTX_load_verify_locations(gearmand->ctx_ssl(), _ssl_ca_file.c_str(), 0) != SSL_SUCCESS)
     {
-      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_load_verify_locations() cannot local the ca certificate %s", GEARMAND_CA_CERTIFICATE);
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_load_verify_locations() cannot local the ca certificate %s", _ssl_ca_file.c_str());
     }
+    gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Loading CA certificate : %s", _ssl_ca_file.c_str());
 
-    if (CyaSSL_CTX_use_certificate_file(gearmand->ctx_ssl(), GEARMAND_SERVER_PEM, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (CyaSSL_CTX_use_certificate_file(gearmand->ctx_ssl(), _ssl_certificate.c_str(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
     {   
-      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_use_certificate_file() cannot obtain certificate %s", GEARMAND_SERVER_PEM);
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_use_certificate_file() cannot obtain certificate %s", _ssl_certificate.c_str());
     }
+    gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Loading certificate : %s", _ssl_certificate.c_str());
 
-    if (CyaSSL_CTX_use_PrivateKey_file(gearmand->ctx_ssl(), GEARMAND_SERVER_KEY, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (CyaSSL_CTX_use_PrivateKey_file(gearmand->ctx_ssl(), _ssl_key.c_str(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
     {   
-      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_use_PrivateKey_file() cannot obtain certificate %s", GEARMAND_SERVER_KEY);
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "CyaSSL_CTX_use_PrivateKey_file() cannot obtain certificate %s", _ssl_key.c_str());
     }
+    gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Loading certificate key : %s", _ssl_key.c_str());
 
     assert(gearmand->ctx_ssl());
   }
 #endif
 
-  rc= gearmand_port_add(gearmand, _port.c_str(), _gear_con_add);
+  rc= gearmand_port_add(gearmand, _port.c_str(), _gear_con_add, _gear_con_remove);
 
   return rc;
 }

@@ -1,4 +1,6 @@
-.TH "GEARMAN_RESULT_SIZE" "3" "June 06, 2013" "1.1.8" "Gearmand"
+.\" Man page generated from reStructuredText.
+.
+.TH "GEARMAN_RESULT_SIZE" "3" "July 29, 2013" "1.1.8" "Gearmand"
 .SH NAME
 gearman_result_size \- Gearmand Documentation, http://gearman.info/
 .
@@ -28,8 +30,33 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.\" Man page generated from reStructuredText.
 .
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
 .sp
 #include <libgearman/gearman.h>
@@ -83,7 +110,7 @@ Compile and link with \-lgearman
 .sp
 The \fI\%gearman_result_st\fP type represents a result set. \fBgearman_aggregator_fn\fP is passed on these types which it uses to create a final result that is returned to the client.
 .sp
-\fI\%gearman_task_result()\fP returns \fI\%gearman_result_st\fP from a \fBgearman_task_st\fP.
+\fI\%gearman_task_result()\fP returns \fI\%gearman_result_st\fP from a \fBgearman_task_st\fP\&.
 .sp
 A \fI\%gearman_result_st\fP can return the resulting value as either a char pointer, boolean, \fBgearman_string_t\fP, or int64_t.
 .SH SEE ALSO

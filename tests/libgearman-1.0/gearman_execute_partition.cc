@@ -55,7 +55,7 @@ using namespace libtest;
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
-#define WORKER_FUNCTION_NAME "client_test"
+#define WORKER_FUNCTION_NAME "partition_client_test"
 #define WORKER_SPLIT_FUNCTION_NAME "split_worker"
 
 test_return_t partition_SETUP(void *object)
@@ -105,7 +105,7 @@ test_return_t gearman_execute_partition_check_parameters(void *object)
 
   // Test client as NULL
   gearman_task_st *task= gearman_execute_by_partition(NULL,
-                                                      test_literal_param("split_worker"),
+                                                      test_literal_param(WORKER_SPLIT_FUNCTION_NAME),
                                                       test_literal_param(WORKER_FUNCTION_NAME),
                                                       NULL, 0,  // unique
                                                       NULL,
@@ -127,20 +127,21 @@ test_return_t gearman_execute_partition_check_parameters(void *object)
 test_return_t gearman_execute_partition_basic(void *object)
 {
   gearman_client_st *client= (gearman_client_st *)object;
+  ASSERT_TRUE(client);
 
   ASSERT_EQ(GEARMAN_SUCCESS,
-               gearman_client_echo(client, test_literal_param("this is mine")));
+            gearman_client_echo(client, test_literal_param("this is mine")));
 
   // This just hear to make it easier to trace when
   // gearman_execute_partition() is called (look in the log to see the
   // failed option setting.
-  gearman_client_set_server_option(client, test_literal_param("should fail"));
+  ASSERT_FALSE(gearman_client_set_server_option(client, test_literal_param("should fail")));
 
   // This is the real work
   gearman_argument_t workload= gearman_argument_make(0, 0, test_literal_param("this dog does not hunt"));
 
   gearman_task_st *task= gearman_execute_by_partition(client,
-                                                      test_literal_param("split_worker"),
+                                                      test_literal_param(WORKER_SPLIT_FUNCTION_NAME),
                                                       test_literal_param(WORKER_FUNCTION_NAME),
                                                       NULL, 0,  // unique
                                                       NULL,
@@ -150,7 +151,7 @@ test_return_t gearman_execute_partition_basic(void *object)
   gearman_result_st *result= gearman_task_result(task);
   ASSERT_TRUE(result);
   const char *value= gearman_result_value(result);
-  test_truth(value);
+  ASSERT_TRUE(value);
   ASSERT_EQ(18UL, gearman_result_size(result));
 
   gearman_task_free(task);
@@ -170,14 +171,14 @@ test_return_t gearman_execute_partition_workfail(void *object)
   gearman_argument_t workload= gearman_argument_make(0, 0, test_literal_param("this dog does not hunt mapper_fail"));
 
   gearman_task_st *task= gearman_execute_by_partition(client,
-                                                      test_literal_param("split_worker"),
+                                                      test_literal_param(WORKER_SPLIT_FUNCTION_NAME),
                                                       gearman_string_param_cstr(worker_function),
                                                       NULL, 0,  // unique
                                                       NULL,
                                                       &workload, 0);
   test_true(task);
 
-  ASSERT_EQ(GEARMAN_WORK_FAIL, gearman_task_return(task));
+  ASSERT_EQ(GEARMAN_WORK_EXCEPTION, gearman_task_return(task));
 
   gearman_task_free(task);
   gearman_client_task_free_all(client);
@@ -195,7 +196,7 @@ test_return_t gearman_execute_partition_fail_in_reduction(void *object)
   gearman_argument_t workload= gearman_argument_make(0, 0, test_literal_param("this dog does not hunt fail"));
 
   gearman_task_st *task= gearman_execute_by_partition(client,
-                                                      test_literal_param("split_worker"),
+                                                      test_literal_param(WORKER_SPLIT_FUNCTION_NAME),
                                                       gearman_string_param_cstr(worker_function),
                                                       NULL, 0,  // unique
                                                       NULL,
@@ -223,7 +224,7 @@ test_return_t gearman_execute_partition_use_as_function(void *object)
   gearman_argument_t workload= gearman_argument_make(0, 0, test_literal_param("this dog does not hunt"));
 
   gearman_task_st *task= gearman_execute(client,
-                                         test_literal_param("split_worker"),
+                                         test_literal_param(WORKER_SPLIT_FUNCTION_NAME),
                                          NULL, 0,  // unique
                                          NULL,
                                          &workload, 0);

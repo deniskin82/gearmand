@@ -41,6 +41,8 @@
 
 #include "libgearman/error_code.h"
 
+#include <algorithm>
+
 EchoCheck::EchoCheck(gearman_universal_st& universal_,
     const void *workload_, const size_t workload_size_) :
     _universal(universal_),
@@ -56,10 +58,29 @@ gearman_return_t EchoCheck::success(gearman_connection_st* con)
     return gearman_error(_universal, GEARMAN_INVALID_COMMAND, "Wrong command sent in response to ECHO request");
   }
 
-  if (con->_packet.data_size != _workload_size or
-      memcmp(_workload, con->_packet.data, _workload_size))
+  size_t compared= std::min(con->_packet.size(), _workload_size);
+
+  if (compared != _workload_size or compared != con->_packet.size())
   {
-    return gearman_error(_universal, GEARMAN_ECHO_DATA_CORRUPTION, "corruption during echo");
+    // If the workload_size is smaller
+    if (memcmp(_workload, con->_packet.value(), compared) == 0)
+    {
+      return gearman_universal_set_error(_universal, GEARMAN_ECHO_DATA_CORRUPTION, GEARMAN_AT,
+                                         "Truncation occured, Expected %u, received %u",
+                                         uint32_t(_workload_size), uint32_t(con->_packet.data_size));
+    }
+
+    return gearman_universal_set_error(_universal, GEARMAN_ECHO_DATA_CORRUPTION, GEARMAN_AT,
+                                       "Expected data was not received, expected %u, received %u",
+                                       uint32_t(_workload_size), uint32_t(con->_packet.data_size));
+  }
+  assert(compared == _workload_size);
+
+  if (memcmp(_workload, con->_packet.value(), compared))
+  {
+    return gearman_universal_set_error(_universal, GEARMAN_ECHO_DATA_CORRUPTION, GEARMAN_AT,
+                                       "Data sent was not what was received %u == %u == %u",
+                                       uint32_t(_workload_size), uint32_t(con->_packet.data_size), uint32_t(compared));
   }
 
   return GEARMAN_SUCCESS;
@@ -72,19 +93,21 @@ gearman_return_t CancelCheck::success(gearman_connection_st* con)
     if (con->_packet.argc)
     {
       gearman_return_t maybe_server_error= string2return_code(static_cast<char *>(con->_packet.arg[0]), int(con->_packet.arg_size[0]));
-
       if (maybe_server_error == GEARMAN_MAX_RETURN)
       {
         maybe_server_error= GEARMAN_SERVER_ERROR;
       }
 
-      return gearman_universal_set_error(_universal, maybe_server_error, GEARMAN_AT, "%d: %.*s:%.*s", con->_packet.argc,
+      return gearman_universal_set_error(_universal, maybe_server_error, GEARMAN_AT, "%s:%s %.*s:%.*s",
+                                         con->host(), con->service(),
                                          con->_packet.arg_size[0], con->_packet.arg[0],
                                          con->_packet.arg_size[1], con->_packet.arg[1]
                                         );
     }
 
-    return gearman_error(_universal, GEARMAN_SERVER_ERROR, "server lacks support for client's to cancel a job");
+    return gearman_universal_set_error(_universal, GEARMAN_SERVER_ERROR, GEARMAN_AT, "%s:%s lacks support for client's to cancel a job",
+                                       con->host(), con->service()
+                                      );
   }
 
   return GEARMAN_SUCCESS;
@@ -97,20 +120,24 @@ gearman_return_t OptionCheck::success(gearman_connection_st* con)
     if (con->_packet.argc)
     {
       gearman_return_t maybe_server_error= string2return_code(static_cast<char *>(con->_packet.arg[0]), int(con->_packet.arg_size[0]));
-
       if (maybe_server_error == GEARMAN_MAX_RETURN)
       {
         maybe_server_error= GEARMAN_INVALID_SERVER_OPTION;
       }
 
-      return gearman_universal_set_error(_universal, maybe_server_error, GEARMAN_AT, "%d: %.*s:%.*s", con->_packet.argc,
-                                         con->_packet.arg_size[0], con->_packet.arg[0],
-                                         con->_packet.arg_size[1], con->_packet.arg[1]
+      return gearman_universal_set_error(_universal, maybe_server_error, GEARMAN_AT, "%s:%s Invalid option %.*s",
+                                         con->host(), con->service(),
+                                         con->_packet.arg_size[0], con->_packet.arg[0]
                                         );
     }
 
-    return gearman_error(_universal, GEARMAN_INVALID_SERVER_OPTION, "invalid server option");
+    return gearman_universal_set_error(_universal, GEARMAN_INVALID_SERVER_OPTION, GEARMAN_AT, "%s:%s Invalid option %.*s",
+                                       con->host(), con->service(),
+                                       con->_packet.arg_size[0], con->_packet.arg[0]
+                                      );
   }
+
+  // @todo mark option set for connection
 
   return GEARMAN_SUCCESS;
 }

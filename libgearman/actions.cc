@@ -68,7 +68,7 @@ static gearman_return_t _client_pause_data(gearman_task_st* shell)
     {
       if (task->create_result(gearman_task_data_size(shell)) == false)
       {
-        return gearman_error(task->client->impl()->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "Failed to create result_st");
+        return gearman_error(task->client->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "Failed to create result_st");
       }
     }
     assert_msg(task->result(), "programmer error, result_ptr has not been allocated for task");
@@ -80,9 +80,7 @@ static gearman_return_t _client_pause_data(gearman_task_st* shell)
   { }
   else if (task->recv->command == GEARMAN_COMMAND_WORK_WARNING)
   { }
-  else if (task->recv->command == GEARMAN_COMMAND_WORK_EXCEPTION)
-  { }
-  else // GEARMAN_COMMAND_WORK_COMPLETE
+  else // GEARMAN_COMMAND_WORK_COMPLETE or GEARMAN_COMMAND_WORK_EXCEPTION
   {
     return GEARMAN_SUCCESS;
   }
@@ -139,7 +137,7 @@ static gearman_return_t _client_do_data(gearman_task_st* shell)
     {
       if (task->create_result(gearman_task_data_size(shell)) == false)
       {
-        return gearman_error(task->client->impl()->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "Failed to create result_st");
+        return gearman_error(task->client->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "Failed to create result_st");
       }
     }
 
@@ -160,14 +158,14 @@ static gearman_return_t _client_do_complete(gearman_task_st *shell)
     {
       if (task->create_result(gearman_task_data_size(shell)) == false)
       {
-        return gearman_error(task->client->impl()->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "Failed to create result_st");
+        return gearman_error(task->client->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "Failed to create result_st");
       }
     }
 
     gearman_string_append(gearman_task_mutable_result(shell)->mutable_string(), static_cast<const char*>(gearman_task_data(shell)), gearman_task_data_size(shell));
   }
 
-  task->result_rc= GEARMAN_SUCCESS;
+  task->error_code(GEARMAN_SUCCESS);
 
   return GEARMAN_SUCCESS;
 }

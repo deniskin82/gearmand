@@ -53,6 +53,11 @@
  * Private declarations
  */
 
+void gearmand_con_st::close_socket()
+{
+  gearmand_sockfd_close(fd);
+}
+
 /**
  * @addtogroup gearmand_con_private Private Gearmand Connection Functions
  * @ingroup gearmand_con
@@ -63,26 +68,25 @@ static gearmand_error_t _con_add(gearmand_thread_st *thread,
                                  gearmand_con_st *dcon)
 {
   gearmand_error_t ret= GEARMAND_SUCCESS;
-  dcon->server_con= gearman_server_con_add(&(thread->server_thread), dcon, &ret);
+  dcon->server_con= gearman_server_con_add(&(thread->server_thread), dcon, ret);
 
   assert(dcon->server_con || ret != GEARMAND_SUCCESS);
   assert(! dcon->server_con || ret == GEARMAND_SUCCESS);
 
   if (dcon->server_con == NULL)
   {
-    gearmand_sockfd_close(dcon->fd);
-
+    dcon->close_socket();
     return ret;
   }
 
-  if (dcon->add_fn)
+  if (dcon->port_st())
   {
-    ret= (*dcon->add_fn)(dcon->server_con);
+    ret= dcon->add_fn(dcon->server_con);
     if (gearmand_failed(ret))
     {
       gearman_server_con_free(dcon->server_con);
 
-      gearmand_sockfd_close(dcon->fd);
+      dcon->close_socket();
 
       return ret;
     }
@@ -91,6 +95,21 @@ static gearmand_error_t _con_add(gearmand_thread_st *thread,
   GEARMAND_LIST__ADD(thread->dcon, dcon);
 
   return GEARMAND_SUCCESS;
+}
+
+gearmand_error_t gearmand_con_st::add_fn(gearman_server_con_st* con_st_)
+{
+  assert(_port_st);
+  assert(con_st_);
+  assert(con_st_ == server_con);
+  return _port_st->add_fn(con_st_);
+}
+
+gearmand_error_t gearmand_con_st::remove_fn(gearman_server_con_st* con_st_)
+{
+  assert(_port_st);
+  assert(con_st_);
+  return _port_st->remove_fn(con_st_);
 }
 
 void _con_ready(int, short events, void *arg)
@@ -515,9 +534,9 @@ gearman_server_job_st * gearman_server_job_create(gearman_server_st *server)
   return server_job;
 }
 
-gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
+gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int& fd,
                                      const char *host, const char *port,
-                                     gearmand_connection_add_fn *add_fn)
+                                     struct gearmand_port_st* port_st_)
 {
   gearmand_con_st *dcon;
 
@@ -545,12 +564,11 @@ gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
   dcon->next= NULL;
   dcon->prev= NULL;
   dcon->server_con= NULL;
-  dcon->add_fn= NULL;
   strncpy(dcon->host, host, NI_MAXHOST);
   dcon->host[NI_MAXHOST -1]= 0;
   strncpy(dcon->port, port, NI_MAXSERV);
   dcon->port[NI_MAXSERV -1]= 0;
-  dcon->add_fn= add_fn;
+  dcon->_port_st= port_st_;
 
   /* If we are not threaded, just add the connection now. */
   if (gearmand->threads == 0)
@@ -635,7 +653,10 @@ void gearmand_con_free(gearmand_con_st *dcon)
     {
       /* This gets around a libevent bug when both POLLIN and POLLOUT are set. */
       event_set(&(dcon->event), dcon->fd, EV_READ, _con_ready, dcon);
-      event_base_set(dcon->thread->base, &(dcon->event));
+      if (event_base_set(dcon->thread->base, &(dcon->event)) == -1)
+      {
+        gearmand_perror(errno, "event_base_set");
+      }
 
       if (event_add(&(dcon->event), NULL) == -1)
       {
@@ -660,7 +681,7 @@ void gearmand_con_free(gearmand_con_st *dcon)
 
   GEARMAND_LIST__DEL(dcon->thread->dcon, dcon);
 
-  gearmand_sockfd_close(dcon->fd);
+  dcon->close_socket();
 
   if (Gearmand()->free_dcon_count < GEARMAND_MAX_FREE_SERVER_CON)
   {
@@ -719,7 +740,9 @@ void gearmand_con_check_queue(gearmand_thread_st *thread)
       gearmand_error_t rc;
       if ((rc= _con_add(thread, dcon)) != GEARMAND_SUCCESS)
       {
-        gearmand_gerror("_con_add() has failed, please report any crashes that occur immediatly after this.", rc);
+        gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, rc, "%s:%s _con_add() has failed, please report any crashes that occur immediatly after this.",
+                            dcon->host,
+                            dcon->port);
         gearmand_con_free(dcon);
       }
     }

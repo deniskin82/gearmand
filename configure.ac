@@ -13,7 +13,7 @@ AC_INIT([gearmand],VERSION_NUMBER,[https://bugs.launchpad.net/gearmand],[gearman
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_CANONICAL_TARGET
+AC_CANONICAL_HOST
 AC_ARG_PROGRAM
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -38,15 +38,16 @@ GEARMAN_LIBRARY_VERSION=8:0:0
 AC_SUBST([GEARMAN_LIBRARY_VERSION])
 
 LT_PREREQ([2.2])
-LT_INIT([disable-static])
+LT_INIT
 LT_LANG([C++])
 
+AC_PROG_CXX
+AC_PROG_CC
 AC_PROG_CC_C99
 AS_IF([test "x${ac_cv_prog_cc_c99}" == "xno"],[AC_MSG_ERROR([No c99 compatible compiler found])])
 
 AX_PLATFORM
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
-AX_ASSERT
 
 # First look for Boost, maybe for a specific minimum version:
 AC_DEFUN([CHECK_BOOST],
@@ -187,6 +188,7 @@ AC_FUNC_VPRINTF
 AC_REPLACE_FNMATCH
 AC_CHECK_FUNCS([accept4])
 AC_CHECK_FUNCS([dup2])
+AC_CHECK_FUNCS([fork])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([memchr])
 AC_CHECK_FUNCS([memmove])
@@ -204,7 +206,6 @@ AC_CHECK_FUNCS([strtol])
 AC_CHECK_FUNCS([strtoul])
 AC_CHECK_FUNCS([uname])
 AC_CHECK_FUNCS([atexit])
-AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([getcwd])
 AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNC([setsockopt],[],[AC_CHECK_LIB([socket],[setsockopt])])
@@ -215,17 +216,39 @@ AX_DLOPEN
 
 # Check for -lrt
 AC_CHECK_LIB([rt],[clock_gettime],
-             [AC_SUBST([RT_LIB],[-lrt])
-             AC_DEFINE([HAVE_LIBRT],[1],[Have clock_gettime])
-             ])
+             [AX_SAVE_FLAGS
+              LIBS="$LIB -lrt"
+              AC_CHECK_FUNCS([clock_gettime])
+              AX_RESTORE_FLAGS
+
+              AC_SUBST([RT_LIB],[-lrt])
+              AC_DEFINE([HAVE_LIBRT],[1],[Have -lrt])
+             ],
+             [AC_CHECK_FUNCS([clock_gettime])])
 
 # Check for -lm
 LT_LIB_M
 
 # Check for CyaSSL
-AX_CHECK_LIBRARY([CYASSL],[cyassl/ssl.h],[cyassl])
-#AC_SUBST([CYASSL])
-#AC_SUBST([CYASSL_LIB])
+AC_DEFUN([AX_ENABLE_SSL],
+         [AC_PREREQ([2.63])dnl
+         m4_define([_SSL_ENABLE_DEFAULT], [m4_if($1, no, no, no)])dnl
+         AC_ARG_ENABLE([ssl],
+                       [AS_HELP_STRING([--enable-ssl],
+                                       [Enable ssl support for Gearman @<:@default=]_SSL_ENABLE_DEFAULT[@:>@])],
+                                       [AS_CASE([$enableval],
+                                                [yes],[enable_ssl=yes],
+                                                [no],[enable_ssl=no],
+                                                [enable_ssl=no])
+                                        ],
+                                        [enable_ssl=]_SSL_ENABLE_DEFAULT)
+         AS_IF([test "x${enable_ssl}" = "xyes"],
+               [AX_CHECK_LIBRARY([CYASSL],[cyassl/ssl.h],[cyassl],[],
+                                 [AC_MSG_ERROR([Unable to find cyassl])
+                                 enable_ssl=no])])
+         ])
+AX_ENABLE_SSL
+
 AX_ENABLE_LIBMEMCACHED
 
 AC_DEFINE([GEARMAND_BLOBSLAP_WORKER],[1],[Have Gearman Blobslap Worker])
@@ -288,6 +311,7 @@ echo "   * Building with libmemcached $ax_enable_libmemcached"
 echo "   * Building with libpq        $ac_cv_libpq"
 echo "   * Building with tokyocabinet $ac_enable_libtokyocabinet"
 echo "   * Building with libmysql     $found_mysql"
+echo "   * SSL enabled:               $enable_ssl"
 echo "   * make -j:                   $enable_jobserver"
 echo "   * VCS checkout:              $ac_cv_vcs_checkout"
 echo ""

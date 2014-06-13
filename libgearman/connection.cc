@@ -49,6 +49,8 @@
 #include "libgearman/interface/push.hpp"
 #include "libgearman/log.hpp"
 
+#include "libgearman/protocol/option.h"
+
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -75,38 +77,9 @@
 # define FD_CLOEXEC 0
 #endif
 
-#ifndef MSG_DONTWAIT
-# define MSG_DONTWAIT 0
+#ifndef MSG_NOSIGNAL
+# define MSG_NOSIGNAL 0
 #endif
-
-static gearman_return_t gearman_connection_set_option(gearman_connection_st *connection,
-                                                      gearman_connection_options_t options,
-                                                      bool value)
-{
-  switch (options)
-  {
-  case GEARMAN_CON_READY:
-    connection->options.ready= value;
-    break;
-
-  case GEARMAN_CON_PACKET_IN_USE:
-    connection->options.packet_in_use= value;
-    break;
-
-  case GEARMAN_CON_IGNORE_LOST_CONNECTION:
-    break;
-
-  case GEARMAN_CON_CLOSE_AFTER_FLUSH:
-    break;
-
-  case GEARMAN_CON_EXTERNAL_FD:
-  case GEARMAN_CON_MAX:
-  default:
-    return GEARMAN_INVALID_COMMAND;
-  }
-
-  return GEARMAN_SUCCESS;
-}
 
 
 /**
@@ -115,8 +88,7 @@ static gearman_return_t gearman_connection_set_option(gearman_connection_st *con
  * @{
  */
 
-gearman_connection_st::gearman_connection_st(gearman_universal_st &universal_arg,
-                                             gearman_connection_options_t *options_args) :
+gearman_connection_st::gearman_connection_st(gearman_universal_st &universal_arg) :
   state(GEARMAN_CON_UNIVERSAL_ADDRINFO),
   send_state(GEARMAN_CON_SEND_STATE_NONE),
   recv_state(GEARMAN_CON_RECV_UNIVERSAL_NONE),
@@ -142,15 +114,6 @@ gearman_connection_st::gearman_connection_st(gearman_universal_st &universal_arg
   send_buffer_ptr(NULL),
   _recv_packet(NULL)
 {
-  if (options_args)
-  {
-    while (*options_args != GEARMAN_CON_MAX)
-    {
-      gearman_connection_set_option(this, *options_args, true);
-      options_args++;
-    }
-  }
-
   if (universal.con_list)
   {
     universal.con_list->prev= this;
@@ -165,10 +128,14 @@ gearman_connection_st::gearman_connection_st(gearman_universal_st &universal_arg
   _service[0]= 0;
 }
 
-gearman_connection_st *gearman_connection_create(gearman_universal_st &universal,
-                                                 gearman_connection_options_t *options)
+/**
+ * Initialize a connection structure. Always check the return value even if
+ * passing in a pre-allocated structure. Some other initialization may have
+ * failed.
+ */
+static gearman_connection_st *__connection_create(gearman_universal_st &universal)
 {
-  gearman_connection_st *connection= new (std::nothrow) gearman_connection_st(universal, options);
+  gearman_connection_st *connection= new (std::nothrow) gearman_connection_st(universal);
   if (connection == NULL)
   {
     gearman_perror(universal, "Failed at new() gearman_connection_st new");
@@ -177,38 +144,34 @@ gearman_connection_st *gearman_connection_create(gearman_universal_st &universal
   return connection;
 }
 
-gearman_connection_st *gearman_connection_create_args(gearman_universal_st& universal,
-                                                      const char *host, const char* service_)
+gearman_connection_st *gearman_connection_create(gearman_universal_st& universal,
+                                                 const char *host, const char* service_)
 {
-  gearman_connection_st *connection= gearman_connection_create(universal);
-  if (connection == NULL)
+  gearman_connection_st *connection= __connection_create(universal);
+  if (connection)
   {
-    return NULL;
-  }
+    connection->set_host(host, (const char*)service_);
 
-  connection->set_host(host, service_);
-
-  if (gearman_failed(connection->lookup()))
-  {
-    gearman_gerror(universal, GEARMAN_GETADDRINFO);
-    delete connection;
-    return NULL;
+    if (gearman_failed(connection->lookup()))
+    {
+      delete connection;
+      return NULL;
+    }
   }
 
   return connection;
 }
 
-gearman_connection_st *gearman_connection_create_args(gearman_universal_st& universal,
-                                                      const char *host, in_port_t port)
+gearman_connection_st *gearman_connection_create(gearman_universal_st& universal,
+                                                 const char *host, const in_port_t& port)
 {
-  gearman_connection_st *connection= gearman_connection_create(universal, NULL);
+  gearman_connection_st *connection= __connection_create(universal);
   if (connection)
   {
     connection->set_host(host, port);
 
     if (gearman_failed(connection->lookup()))
     {
-      gearman_gerror(universal, GEARMAN_GETADDRINFO);
       delete connection;
       return NULL;
     }
@@ -220,7 +183,7 @@ gearman_connection_st *gearman_connection_create_args(gearman_universal_st& univ
 gearman_connection_st *gearman_connection_copy(gearman_universal_st& universal,
                                                const gearman_connection_st& from)
 {
-  gearman_connection_st *connection= gearman_connection_create(universal);
+  gearman_connection_st *connection= __connection_create(universal);
 
   if (connection)
   {
@@ -278,7 +241,7 @@ void gearman_connection_st::free_private_packet()
  * Public Definitions
  */
 
-void gearman_connection_st::set_host(const char *host_, const in_port_t& port_)
+void gearman_connection_st::set_host(const char *host_, const in_port_t port_)
 {
   if (port_ < 1)
   {
@@ -333,51 +296,50 @@ void gearman_connection_st::close_socket()
   if (_ssl)
   {
 #if defined(HAVE_CYASSL) && HAVE_CYASSL
+    CyaSSL_shutdown(_ssl);
     CyaSSL_free(_ssl);
     _ssl= NULL;
 #endif
   }
 
-  if (fd == INVALID_SOCKET)
+  if (fd != INVALID_SOCKET)
   {
-    return;
-  }
-
-  /* in case of death shutdown to avoid blocking at close_socket() */
-  if (shutdown(fd, SHUT_RDWR) == SOCKET_ERROR && get_socket_errno() != ENOTCONN)
-  { }
-  else
-  {
-    if (closesocket(fd) == SOCKET_ERROR)
+    /* in case of death shutdown to avoid blocking at close_socket() */
+    if (shutdown(fd, SHUT_RDWR) == SOCKET_ERROR && get_socket_errno() != ENOTCONN)
     { }
+    else
+    {
+      if (closesocket(fd) == SOCKET_ERROR)
+      { }
+    }
+
+    state= GEARMAN_CON_UNIVERSAL_CONNECT;
+    fd= INVALID_SOCKET;
+    events= 0;
+    revents= 0;
+
+    send_state= GEARMAN_CON_SEND_STATE_NONE;
+    send_buffer_ptr= send_buffer;
+    send_buffer_size= 0;
+    send_data_size= 0;
+    send_data_offset= 0;
+
+    recv_state= GEARMAN_CON_RECV_UNIVERSAL_NONE;
+    free_recv_packet();
+
+    recv_buffer_ptr= recv_buffer;
+    recv_buffer_size= 0;
+
+    options.server_options_sent= false;
+
+    // created_id_next is incremented for every outbound packet (except status).
+    // created_id is incremented for every response packet received, and also when
+    // no packets are received due to an error. There are lots of such error paths
+    // and it seems simpler to just reset these both to zero when a connection is
+    // 'closed'.
+    created_id= 0;
+    created_id_next= 0;
   }
-
-  state= GEARMAN_CON_UNIVERSAL_ADDRINFO;
-  fd= INVALID_SOCKET;
-  events= 0;
-  revents= 0;
-
-  send_state= GEARMAN_CON_SEND_STATE_NONE;
-  send_buffer_ptr= send_buffer;
-  send_buffer_size= 0;
-  send_data_size= 0;
-  send_data_offset= 0;
-
-  recv_state= GEARMAN_CON_RECV_UNIVERSAL_NONE;
-  free_recv_packet();
-
-  recv_buffer_ptr= recv_buffer;
-  recv_buffer_size= 0;
-
-  options.server_options_sent= false;
-
-  // created_id_next is incremented for every outbound packet (except status).
-  // created_id is incremented for every response packet received, and also when
-  // no packets are received due to an error. There are lots of such error paths
-  // and it seems simpler to just reset these both to zero when a connection is
-  // 'closed'.
-  created_id= 0;
-  created_id_next= 0;
 }
 
 void gearman_connection_st::free_recv_packet()
@@ -465,24 +427,25 @@ gearman_return_t gearman_connection_st::send_packet(const gearman_packet_st& pac
          head= head->next)
     {
       gearman_packet_st message;
-      const void *args[]= { (const void*)head->value() };
-      size_t args_size[]= { head->size() };
-      gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
-                                                       GEARMAN_COMMAND_OPTION_REQ, args, args_size, 1);
-
+      gearman_string_t option= { (const char*)head->value(), head->size() };
+      gearman_return_t ret=  libgearman::protocol::option(universal, message, option);
       if (gearman_failed(ret))
       {
+        assert(universal.error_code());
+        assert(universal.error());
         gearman_packet_free(&message);
-        return gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
+        return universal.error_code();
       }
 
       PUSH_BLOCKING(universal);
-      OptionCheck check(universal);
+      OptionCheck check(universal, option);
       ret= _send_packet(message, true);
       if (gearman_failed(ret))
       {
+        assert(universal.error_code());
+        assert(universal.error());
         gearman_packet_free(&message);
-        return gearman_error(universal, ret, "Failed to send server-options packet");
+        return universal.error_code();
       }
 
       options.packet_in_use= true;
@@ -500,7 +463,6 @@ gearman_return_t gearman_connection_st::send_packet(const gearman_packet_st& pac
         gearman_packet_free(&message);
         free_private_packet();
         reset_recv_packet();
-        gearman_error(universal, ret, "receiving()");
         return ret;
       }
 
@@ -682,8 +644,29 @@ gearman_return_t gearman_connection_st::lookup()
   int ret;
   if ((ret= getaddrinfo(_host, _service, &ai, &(_addrinfo))))
   {
+    int local_errno= errno;
     reset_addrinfo();
-    return gearman_universal_set_error(universal, GEARMAN_GETADDRINFO, GEARMAN_AT, "getaddrinfo:%s", gai_strerror(ret));
+    switch (ret)
+    {
+      case EAI_AGAIN:
+        return gearman_universal_set_error(universal, GEARMAN_TIMEOUT, GEARMAN_AT, "Nameserver timed out while looking up %s:%s", host(), service());
+
+      case EAI_MEMORY:
+        return gearman_universal_set_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, GEARMAN_AT,
+                                           "A memory allocation failed while calling getaddrinfo() for %s:%s", host(), service());
+
+      case EAI_SYSTEM:
+        if (local_errno == ENOENT)
+        {
+          return gearman_universal_set_error(universal, GEARMAN_GETADDRINFO, GEARMAN_AT, "DNS lookup failed for %s:%s", host(), service());
+        }
+        return gearman_universal_set_perror(universal, local_errno, GEARMAN_AT, "System error happened during a call to getaddrinfo() for %s:%s", host(), service());
+
+      default:
+        break;
+    }
+
+    return gearman_universal_set_error(universal, GEARMAN_GETADDRINFO, GEARMAN_AT, "%s:%s getaddrinfo:%s", host(), service(), gai_strerror(ret));
   }
 
   addrinfo_next= _addrinfo;
@@ -742,24 +725,11 @@ gearman_return_t gearman_connection_st::flush()
       if (addrinfo_next == NULL)
       {
         state= GEARMAN_CON_UNIVERSAL_ADDRINFO;
-        return gearman_universal_set_error(universal, GEARMAN_COULD_NOT_CONNECT, GEARMAN_AT, "%s:%s", _host, _service);
+        return gearman_universal_set_error(universal, GEARMAN_COULD_NOT_CONNECT, GEARMAN_AT, "Connection to %s:%s failed", _host, _service);
       }
 
       // rewrite tye if HAVE_SOCK_CLOEXEC
-      {
-        int type= addrinfo_next->ai_socktype;
-        if (SOCK_CLOEXEC)
-        {
-          type|= SOCK_CLOEXEC;
-        }
-
-        if (SOCK_NONBLOCK)
-        {
-          type|= SOCK_NONBLOCK; 
-        }
-
-        fd= socket(addrinfo_next->ai_family, type, addrinfo_next->ai_protocol);
-      }
+      fd= socket(addrinfo_next->ai_family, addrinfo_next->ai_socktype|SOCK_CLOEXEC|SOCK_NONBLOCK, addrinfo_next->ai_protocol);
 
       if (fd == INVALID_SOCKET)
       {
@@ -781,7 +751,9 @@ gearman_return_t gearman_connection_st::flush()
         if (connect(fd, addrinfo_next->ai_addr, addrinfo_next->ai_addrlen) == 0)
         {
           state= GEARMAN_CON_UNIVERSAL_CONNECTED;
+#if 0
           addrinfo_next= NULL;
+#endif
 
           break;
         }
@@ -868,15 +840,22 @@ gearman_return_t gearman_connection_st::flush()
         write_size= 0;
         if (_ssl)
         {
-          write_size= CyaSSL_send(_ssl, send_buffer_ptr, send_buffer_size, MSG_NOSIGNAL);
-          if (write_size < 0)
+          write_size= CyaSSL_send(_ssl, send_buffer_ptr, int(send_buffer_size), MSG_NOSIGNAL);
+          if (write_size <= 0)
           {
             int err;
-            switch ((err= CyaSSL_get_error(_ssl, 0)))
+            switch ((err= CyaSSL_get_error(_ssl, int(write_size))))
             {
+              case SSL_ERROR_WANT_CONNECT:
+              case SSL_ERROR_WANT_ACCEPT:
+                write_size= -1;
+                errno= EAGAIN;
+                break;
+
               case SSL_ERROR_WANT_WRITE:
               case SSL_ERROR_WANT_READ:
-                errno= EWOULDBLOCK;
+                write_size= -1;
+                errno= EAGAIN;
                 break;
 
               default:
@@ -922,6 +901,11 @@ gearman_return_t gearman_connection_st::flush()
               continue;
             }
           case EPIPE:
+            {
+              gearman_return_t ret= gearman_perror(universal, "lost connection to server during send");
+              close_socket();
+              return ret;
+            }
           case ECONNRESET:
           case EHOSTDOWN:
             {
@@ -985,10 +969,12 @@ gearman_packet_st *gearman_connection_st::receiving(gearman_packet_st& packet_ar
       return NULL;
     }
 
-    _recv_packet= gearman_packet_create(universal, &packet_arg);
+    // This should not fail
+    _recv_packet= gearman_packet_create(universal, packet_arg);
+    assert(_recv_packet == &packet_arg);
     if (_recv_packet == NULL)
     {
-      ret= gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create()");
+      ret= gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "Programmer error, gearman_packet_create() failed which should not be possible");
       return NULL;
     }
 
@@ -1012,6 +998,7 @@ gearman_packet_st *gearman_connection_st::receiving(gearman_packet_st& packet_ar
         }
         else if (ret != GEARMAN_IO_WAIT)
         {
+          assert(universal.error_code());
           close_socket();
           return NULL;
         }
@@ -1063,8 +1050,8 @@ gearman_packet_st *gearman_connection_st::receiving(gearman_packet_st& packet_ar
     while (recv_data_size)
     {
       (void)receive_data(static_cast<uint8_t *>(const_cast<void *>(packet_arg.data)) +
-                      recv_data_offset,
-                      packet_arg.data_size -recv_data_offset, ret);
+                         recv_data_offset,
+                         packet_arg.data_size -recv_data_offset, ret);
       if (gearman_failed(ret))
       {
         return NULL;
@@ -1114,6 +1101,7 @@ size_t gearman_connection_st::receive_data(void *data, size_t data_size, gearman
 
   if (data_size != recv_size)
   {
+    // @note fix this to test for error before blindly doing this opperation
     recv_size+= recv_socket(static_cast<uint8_t *>(const_cast<void *>(data)) + recv_size, data_size - recv_size, ret);
     recv_data_offset+= recv_size;
   }
@@ -1142,14 +1130,14 @@ size_t gearman_connection_st::recv_socket(void *data, size_t data_size, gearman_
 #if defined(HAVE_CYASSL) && HAVE_CYASSL
     if (_ssl)
     {
-      read_size= CyaSSL_recv(_ssl, data, data_size, MSG_DONTWAIT);
-      if (read_size < 0)
+      read_size= CyaSSL_recv(_ssl, data, int(data_size), MSG_NOSIGNAL);
+      if (read_size <= 0)
       {
-        int sendErr= CyaSSL_get_error(_ssl, 0);
+        int sendErr= CyaSSL_get_error(_ssl, int(read_size));
         if (sendErr != SSL_ERROR_WANT_READ)
         {
           char errorString[80];
-          int err = CyaSSL_get_error(_ssl, 0);
+          int err= CyaSSL_get_error(_ssl, 0);
           CyaSSL_ERR_error_string(err, errorString);
           close_socket();
           ret= gearman_universal_set_error(universal, GEARMAN_LOST_CONNECTION, GEARMAN_AT,
@@ -1263,9 +1251,17 @@ gearman_return_t gearman_connection_st::set_socket_options()
         int rval;
         do
         { 
-          rval= fcntl (fd, F_SETFD, flags | FD_CLOEXEC);
+          rval= fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
         } while (rval == -1 && (errno == EINTR or errno == EAGAIN));
-        // we currently ignore the case where rval is -1
+
+        if (rval == -1)
+        {
+          gearman_perror(universal, "fcntl (fd, F_SETFD, flags | FD_CLOEXEC)");
+        }
+      }
+      else
+      {
+        gearman_perror(universal, "fcntl(fd, F_GETFD, 0)");
       }
     }
   }

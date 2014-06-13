@@ -2,7 +2,7 @@
  *
  *  Data Differential YATL (i.e. libtest)  library
  *
- *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2012-2013 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -60,25 +60,6 @@
 
 using namespace libtest;
 
-static void stats_print(libtest::Framework *frame)
-{
-  if (frame->failed() == 0 and frame->success() == 0)
-  {
-    return;
-  }
-
-  Outn();
-  Out << "Collections\t\t\t\t\t" << frame->total();
-  Out << "\tFailed\t\t\t\t\t" << frame->failed();
-  Out << "\tSkipped\t\t\t\t\t" << frame->skipped();
-  Out << "\tSucceeded\t\t\t\t" << frame->success();
-  Outn();
-  Out << "Tests\t\t\t\t\t" << frame->sum_total();
-  Out << "\tFailed\t\t\t\t" << frame->sum_failed();
-  Out << "\tSkipped\t\t\t\t" << frame->sum_skipped();
-  Out << "\tSucceeded\t\t\t" << frame->sum_success();
-}
-
 #include <getopt.h>
 #include <unistd.h>
 
@@ -113,7 +94,7 @@ int main(int argc, char *argv[], char* environ_[])
     Valgrind does not currently work reliably, or sometimes at all, on OSX
     - Fri Jun 15 11:24:07 EDT 2012
   */
-#if defined(TARGET_OS_OSX) && TARGET_OS_OSX
+#if defined(__APPLE__) && __APPLE__
   if (valgrind_is_caller())
   {
     return EXIT_SKIP;
@@ -362,39 +343,54 @@ int main(int argc, char *argv[], char* environ_[])
       shutdown_t status= signal.get_shutdown();
       if (status == SHUTDOWN_FORCED)
       {
-        Out << "Tests were aborted.";
+        // Tests were aborted
         exit_code= EXIT_FAILURE;
       }
       else if (frame->failed())
       {
-        Out << "Some test failed.";
+        // Some test failed
         exit_code= EXIT_FAILURE;
       }
       else if (frame->skipped() and frame->failed() and frame->success())
       {
-        Out << "Some tests were skipped.";
+        // Some tests were skipped
       }
       else if (frame->success() and (frame->failed() == 0))
       {
-        Out;
-        Out << "All tests completed successfully.";
+        // Success
       }
 
-      stats_print(frame.get());
-
-      std::ofstream xml_file;
-      std::string file_name;
-      if (getenv("WORKSPACE"))
+#if 0
       {
-        file_name.append(getenv("WORKSPACE"));
-        file_name.append("/");
+        std::ofstream xml_file;
+        std::string file_name;
+        if (getenv("WORKSPACE"))
+        {
+          file_name.append(getenv("WORKSPACE"));
+          file_name.append("/");
+        }
+        file_name.append(frame->name());
+        file_name.append(".xml");
+        xml_file.open(file_name.c_str(), std::ios::trunc);
+        libtest::Formatter::xml(*frame, xml_file);
       }
-      file_name.append(frame->name());
-      file_name.append(".xml");
-      xml_file.open(file_name.c_str(), std::ios::trunc);
-      libtest::Formatter::xml(*frame, xml_file);
+#endif
 
-      Outn(); // Generate a blank to break up the messages if make check/test has been run
+#if 0
+      {
+        std::ofstream tap_file;
+        std::string file_name;
+        if (getenv("WORKSPACE"))
+        {
+          file_name.append(getenv("WORKSPACE"));
+          file_name.append("/");
+        }
+        file_name.append(frame->name());
+        file_name.append(".tap");
+        tap_file.open(file_name.c_str(), std::ios::trunc);
+        libtest::Formatter::tap(*frame, tap_file);
+      }
+#endif
     } while (exit_code == EXIT_SUCCESS and --opt_repeat);
   }
   catch (const libtest::__skipped& e)

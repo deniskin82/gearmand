@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2012-2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -61,6 +61,11 @@ struct Task
       is_paused(false),
       is_initialized(true)
     { }
+
+    ~Options()
+    {
+      is_initialized= false;
+    }
   } options;
   enum gearman_task_kind_t type;
   enum gearman_task_state_t state;
@@ -69,7 +74,7 @@ struct Task
   uint32_t numerator;
   uint32_t denominator;
   uint32_t client_count;
-  gearman_client_st *client;
+  Client *client;
   gearman_task_st *next;
   gearman_task_st *prev;
   void *context;
@@ -77,7 +82,7 @@ struct Task
   gearman_packet_st *recv;
   gearman_packet_st send;
   struct gearman_actions_t func;
-  gearman_return_t result_rc;
+  struct error_st _error;
   struct gearman_result_st *_result_ptr;
   char job_handle[GEARMAN_JOB_HANDLE_SIZE];
   gearman_vector_st exception;
@@ -89,7 +94,7 @@ struct Task
     return _shell;
   }
 
-  Task(gearman_client_st& client_, gearman_task_st* shell_) :
+  Task(Client* client_, gearman_task_st* shell_) :
     type(GEARMAN_TASK_KIND_ADD_TASK),
     state(GEARMAN_TASK_STATE_NEW),
     magic_(TASK_MAGIC),
@@ -97,14 +102,14 @@ struct Task
     numerator(0),
     denominator(0),
     client_count(0),
-    client(&client_),
+    client(client_),
     next(NULL),
     prev(NULL),
     context(NULL),
     con(NULL),
     recv(NULL),
-    func(client_.impl()->actions),
-    result_rc(GEARMAN_UNKNOWN_STATE),
+    func(client_->actions),
+    _error(GEARMAN_UNKNOWN_STATE),
     _result_ptr(NULL),
     unique_length(0),
     _shell(shell_)
@@ -125,14 +130,14 @@ struct Task
 
     // Add the task to the client
     {
-      if (client_.impl()->task_list)
+      if (client_->task_list)
       {
-        client_.impl()->task_list->impl()->prev= _shell;
+        client_->task_list->impl()->prev= _shell;
       }
-      next= client_.impl()->task_list;
+      next= client_->task_list;
       prev= NULL;
-      client_.impl()->task_list= _shell;
-      client_.impl()->task_count++;
+      client_->task_list= _shell;
+      client_->task_count++;
     }
 
     _shell->impl(this);
@@ -153,6 +158,55 @@ struct Task
   }
 
   bool create_result(size_t initial_size);
+
+  void set_state(const enum gearman_task_state_t state_)
+  {
+    state= state_;
+  }
+
+  gearman_return_t error_code(const gearman_return_t rc_)
+  {
+    return _error.error_code(rc_);
+  }
+
+  gearman_return_t error_code(const gearman_return_t rc_,  const char*)
+  {
+    return _error.error_code(rc_);
+  }
+
+  gearman_return_t error_code() const
+  {
+    return _error.error_code();
+  }
+
+  const char* error() const
+  {
+    return _error.error();
+  }
+
+  bool is_finished() const
+  {
+    switch (state)
+    {
+      case GEARMAN_TASK_STATE_NEW:
+      case GEARMAN_TASK_STATE_SUBMIT:
+      case GEARMAN_TASK_STATE_WORKLOAD:
+      case GEARMAN_TASK_STATE_WORK:
+      case GEARMAN_TASK_STATE_CREATED:
+      case GEARMAN_TASK_STATE_DATA:
+      case GEARMAN_TASK_STATE_WARNING:
+      case GEARMAN_TASK_STATE_STATUS:
+        return false;
+
+      case GEARMAN_TASK_STATE_COMPLETE:
+      case GEARMAN_TASK_STATE_EXCEPTION:
+      case GEARMAN_TASK_STATE_FAIL:
+      case GEARMAN_TASK_STATE_FINISHED:
+        return true;
+    }
+
+    return false;
+  }
 
 private:
   gearman_task_st* _shell;

@@ -75,6 +75,7 @@ using namespace org::gearmand;
 #include "tests/execute.h"
 #include "tests/gearman_client_do_job_handle.h"
 #include "tests/gearman_execute_partition.h"
+#include "tests/libgearman-1.0/fork.h"
 #include "tests/protocol.h"
 #include "tests/regression.h"
 #include "tests/task.h"
@@ -458,7 +459,7 @@ static test_return_t submit_job_test(void *object)
 
   ASSERT_EQ(GEARMAN_SUCCESS, rc);
 
-  test_truth(job_result);
+  ASSERT_TRUE(job_result);
   ASSERT_EQ(gearman_size(value), result_length);
 
   test_memcmp(gearman_c_str(value), job_result, gearman_size(value));
@@ -813,7 +814,7 @@ static test_return_t hostname_resolution(void *)
 
   ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_error_code(&client));
 
-#if defined(TARGET_OS_FREEBSD) && TARGET_OS_FREEBSD
+#if defined(__FreeBSD__) && __FreeBSD__
   ASSERT_EQ(GEARMAN_TIMEOUT,
                gearman_client_echo(&client, test_literal_param("foo")));
 #else
@@ -1152,7 +1153,7 @@ static test_return_t submit_log_failure_TEST(void *object)
 
 static test_return_t strerror_count(void *)
 {
-  ASSERT_EQ((int)GEARMAN_MAX_RETURN, 52);
+  ASSERT_EQ((int)GEARMAN_MAX_RETURN, 53);
 
   return TEST_SUCCESS;
 }
@@ -1174,7 +1175,7 @@ static test_return_t strerror_strings(void *)
     132823274U, 3950859856U, 237150774U, 290535510U, 
     2101976744U, 2262698284U, 3182950564U, 2391595326U, 
     1764731897U, 3485422815U, 99607280U, 2348849961U, 
-    607991020U, 1597605008U, 1377573125U, 723914800U };
+    607991020U, 1597605008U, 1377573125U, 723914800U, 3144965656U };
 
   for (int rc= GEARMAN_SUCCESS; rc < GEARMAN_MAX_RETURN; rc++)
   {
@@ -1319,8 +1320,7 @@ static test_return_t gearman_client_cancel_job_TEST(void* object)
 
   // For the moment we won't test the return value since this will change once
   // we formalize the behavior.
-  gearman_return_t ret= gearman_client_cancel_job(client, job_handle);
-  (void)ret;
+  test_compare(GEARMAN_JOB_NOT_FOUND, gearman_client_cancel_job(client, job_handle));
 
   return TEST_SUCCESS;
 }
@@ -2139,6 +2139,11 @@ static bool world_destroy(void *object)
   return TEST_SUCCESS;
 }
 
+test_st client_fork_TESTS[] ={
+  {"fork()", 0, check_client_fork_TEST },
+  {0, 0, 0}
+};
+
 test_st gearman_client_add_server_TESTS[] ={
   {"gearman_client_add_server(localhost)", 0, gearman_client_add_server_localhost_TEST },
   {"gearman_client_add_server(empty quote)", 0, gearman_client_add_server_empty_quote_TEST },
@@ -2496,6 +2501,7 @@ collection_st collection[] ={
   {"gearman_execute_partition(GEARMAN_CLIENT_FREE_TASKS)", partition_free_SETUP, 0, gearman_execute_partition_tests},
   {"gearman_command_t", 0, 0, gearman_command_t_tests},
   {"coalescence", 0, 0, coalescence_TESTS},
+  {"fork", fork_SETUP, 0, client_fork_TESTS },
   {"loop", 0, 0, loop_TESTS},
   {"limits", 0, 0, limit_tests },
   {"client-logging", pre_logging, 0, tests_log_TESTS },

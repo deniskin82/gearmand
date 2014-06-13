@@ -165,21 +165,22 @@ static void thread_runner(context_st* con)
     gearman_worker_set_namespace(&worker, context->namespace_key.c_str(), context->namespace_key.length());
   }
 
-  // Check for a working server by "asking" it for an option
+  // Set worker id
   {
-    size_t count= 5;
-    bool success= false;
-    while (--count and success == false)
-    {
-      success= gearman_worker_set_server_option(&worker, test_literal_param("exceptions"));
-    }
-
-    if (success == false)
+    if (gearman_failed(gearman_worker_set_identifier(&worker, gearman_literal_param("start_worker"))))
     {
       Out << "gearman_worker_set_server_option() failed";
       context->fail();
       return;
     }
+  }
+
+  // Check for a working server by pinging it with echo
+  if (gearman_failed(gearman_worker_echo(&worker, gearman_literal_param("start_worker"))))
+  {
+    Out << "gearman_worker_set_server_option() failed";
+    context->fail();
+    return;
   }
 
   if (gearman_failed(gearman_worker_define_function(&worker,
@@ -326,7 +327,7 @@ bool worker_handle_st::shutdown()
 bool worker_handle_st::check()
 {
   gearman_return_t rc;
-  if (gearman_failed(rc=  gearman_kill(_worker_id, GEARMAN_KILL)))
+  if (gearman_failed(rc=  gearman_kill(_worker_id, GEARMAN_SIGNAL_CHECK)))
   {
     return false;
   }

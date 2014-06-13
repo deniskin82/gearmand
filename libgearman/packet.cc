@@ -173,23 +173,10 @@ static uint32_t global_packet_id= 0;
 #endif
 
 gearman_packet_st *gearman_packet_create(gearman_universal_st &universal,
-                                         gearman_packet_st *packet)
+                                         gearman_packet_st& packet)
 {
-  if (packet)
-  {
-    packet->reset();
-  }
-  else
-  {
-    packet= new (std::nothrow) gearman_packet_st(true);
-    if (packet == NULL)
-    {
-      gearman_perror(universal, "gearman_packet_st new");
-      errno= ENOMEM;
-      return NULL;
-    }
-  }
-  packet->universal= &universal;
+  packet.reset();
+  packet.universal= &universal;
 
 #ifdef GEARMAN_PACKET_TRACE
   pthread_mutex_lock(&mutex);
@@ -203,15 +190,15 @@ gearman_packet_st *gearman_packet_create(gearman_universal_st &universal,
   {
     if (universal.packet_list != NULL)
     {
-      universal.packet_list->prev= packet;
+      universal.packet_list->prev= &packet;
     }
-    packet->next= universal.packet_list;
-    packet->prev= NULL;
-    universal.packet_list= packet;
+    packet.next= universal.packet_list;
+    packet.prev= NULL;
+    universal.packet_list= &packet;
     universal.packet_count++;
   }
 
-  return packet;
+  return &packet;
 }
 
 gearman_return_t gearman_packet_create_arg(gearman_packet_st& self,
@@ -228,7 +215,7 @@ gearman_return_t gearman_packet_create_args(gearman_universal_st& universal,
                                             const size_t args_size[],
                                             size_t args_count)
 {
-  if (gearman_packet_create(universal, &packet) == NULL)
+  if (gearman_packet_create(universal, packet) == NULL)
   {
     assert(universal.error_code());
     return universal.error_code();
@@ -396,8 +383,7 @@ gearman_return_t gearman_packet_unpack_header(gearman_packet_st *packet)
   if (packet->command == GEARMAN_COMMAND_TEXT ||
       packet->command >= GEARMAN_COMMAND_MAX)
   {
-    gearman_error(*packet->universal, GEARMAN_INVALID_COMMAND, "invalid command value");
-    return GEARMAN_INVALID_COMMAND;
+    return gearman_error(*packet->universal, GEARMAN_INVALID_COMMAND, "invalid command value");
   }
 
   memcpy(&tmp, packet->args + 8, 4);

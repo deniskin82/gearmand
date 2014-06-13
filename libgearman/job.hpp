@@ -37,20 +37,65 @@
 
 #pragma once
 
-struct gearman_job_st
+#include "libgearman/interface/worker.hpp"
+
+class Job
 {
-  struct {
-    bool allocated;
+public:
+  Job(gearman_job_st* shell_, Worker& worker_);
+
+  gearman_job_st* shell()
+  {
+    return _shell;
+  }
+
+  struct Options {
     bool assigned_in_use;
     bool work_in_use;
     bool finished;
+
+    Options():
+      assigned_in_use(false),
+      work_in_use(false),
+      finished(false)
+    { }
   } options;
-  gearman_worker_st *worker;
-  gearman_job_st *next;
-  gearman_job_st *prev;
+
+  bool finished() const
+  {
+    return options.finished;
+  }
+
+  void finished(const bool finished_)
+  {
+    options.finished= finished_;
+  }
+
+  Worker& _worker;
+  Job *next;
+  Job *prev;
   gearman_connection_st *con;
   gearman_packet_st assigned;
   gearman_packet_st work;
   struct gearman_job_reducer_st *reducer;
-  gearman_return_t error_code;
+  gearman_return_t _error_code;
+
+  gearman_universal_st& universal()
+  {
+    return _worker.universal;
+  }
+
+  gearman_universal_st& universal() const
+  {
+    return _worker.universal;
+  }
+
+  gearman_return_t error_code() const
+  {
+    return universal().error_code();
+  }
+
+private:
+  gearman_job_st* _shell;
+  gearman_job_st _owned_shell;
 };

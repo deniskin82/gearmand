@@ -75,7 +75,7 @@ extern "C" {
  */
 GEARMAN_API
 gearman_server_con_st *gearman_server_con_add(gearman_server_thread_st *thread, gearmand_con_st *dcon,
-                                              gearmand_error_t *ret);
+                                              gearmand_error_t& ret);
 
 /**
  * Attempt to free a server connection structure.
@@ -111,8 +111,8 @@ const char *gearman_server_con_id(gearman_server_con_st *con);
  * Set client id.
  */
 GEARMAN_API
-void gearman_server_con_set_id(gearman_server_con_st *con, char *id,
-                               size_t size);
+void gearman_server_con_set_id(gearman_server_con_st *con, const char *id,
+                               const size_t size);
 
 /**
  * Free server worker struction with name for a server connection.

@@ -1,4 +1,6 @@
-.TH "GEARMAN_EXECUTE" "3" "June 06, 2013" "1.1.8" "Gearmand"
+.\" Man page generated from reStructuredText.
+.
+.TH "GEARMAN_EXECUTE" "3" "July 29, 2013" "1.1.8" "Gearmand"
 .SH NAME
 gearman_execute \- Gearmand Documentation, http://gearman.info/
 .
@@ -28,8 +30,33 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.\" Man page generated from reStructuredText.
 .
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
 .sp
 #include <libgearman/gearman.h>
@@ -48,9 +75,9 @@ Link with \-lgearman
 \fI\%gearman_execute()\fP is used to create a new \fBgearman_task_st\fP that is executed against the function that is found via the function_name argument.
 .sp
 \fBgearman_work_t\fP can be used to describe the work that will be
-executed, it is built with \fBgearman_argument_make()\fP.  The argument
+executed, it is built with \fBgearman_argument_make()\fP\&.  The argument
 unique_str is optional, but if supplied it is used for coalescence by
-\fBgearmand\fP.
+\fBgearmand\fP\&.
 .sp
 \fBgearman_argument_t\fP is the work that the \fIclient\fP will send
 the to the server
@@ -59,13 +86,13 @@ If \fI\%gearman_execute()\fP is given a \fBgearman_work_t\fP that has been built
 .sp
 What is happening is that the function is mappping/splitting work up into units, and then sending each of them to the reducer function. Once all work is completed, the \fImapper\fP function will aggregate the work via an aggregator function, \fBgearman_aggregator_fn\fP, and return a result.
 .sp
-If any of the units of work error, the job will be aborted. The resulting value will be stored in the \fBgearman_task_st\fP.
+If any of the units of work error, the job will be aborted. The resulting value will be stored in the \fBgearman_task_st\fP\&.
 .sp
 The result can be obtained from the task by calling
-\fBgearman_task_result()\fP to gain the \fBgearman_result_st\fP.
+\fBgearman_task_result()\fP to gain the \fBgearman_result_st\fP\&.
 .SH RETURN VALUE
 .sp
-\fI\%gearman_execute()\fP returns a c:type:\fIgearman_task_st\fP.
+\fI\%gearman_execute()\fP returns a c:type:\fIgearman_task_st\fP\&.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5

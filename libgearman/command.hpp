@@ -1,4 +1,4 @@
-/* ANSI-C code produced by gperf version 3.0.4 */
+/* C++ code produced by gperf version 3.0.4 */
 /* Command-line: /usr/bin/gperf --compare-strncmp --switch=1 -D --struct-type libgearman/command.gperf  */
 /* Computed positions: -k'1,$' */
 
@@ -29,7 +29,7 @@
 #error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gnu-gperf@gnu.org>."
 #endif
 
-#line 10 "libgearman/command.gperf"
+#line 11 "libgearman/command.gperf"
  
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
  * 
@@ -77,15 +77,13 @@
 #include "libgearman/assert.hpp"
 #include "libgearman/command.h"
 
-namespace org {
-namespace gearman {
-
-#line 62 "libgearman/command.gperf"
+#line 60 "libgearman/command.gperf"
 struct gearman_command_string_st
 {
   const char *name;
   const gearman_command_t code;
 };
+#include <string.h>
 
 #define TOTAL_KEYWORDS 43
 #define MIN_WORD_LENGTH 4
@@ -139,15 +137,16 @@ gperf_case_memcmp (register const char *s1, register const char *s2, register un
 }
 #endif
 
-#ifdef __GNUC__
-__inline
-#else
-#ifdef __cplusplus
-inline
-#endif
-#endif
-static unsigned int
-hash (register const char *str, register unsigned int len)
+class String2gearman_command_t
+{
+private:
+  static inline unsigned int hash (const char *str, unsigned int len);
+public:
+  static const struct gearman_command_string_st *in_word_set (const char *str, unsigned int len);
+};
+
+inline unsigned int
+String2gearman_command_t::hash (register const char *str, register unsigned int len)
 {
   static const unsigned char asso_values[] =
     {
@@ -183,102 +182,96 @@ hash (register const char *str, register unsigned int len)
 
 static const struct gearman_command_string_st gearman_command_string_st[] =
   {
-#line 68 "libgearman/command.gperf"
+#line 66 "libgearman/command.gperf"
     {"TEXT", GEARMAN_COMMAND_TEXT},
-#line 78 "libgearman/command.gperf"
-    {"NO_JOB", GEARMAN_COMMAND_NO_JOB},
-#line 97 "libgearman/command.gperf"
-    {"WORK_WARNING", GEARMAN_COMMAND_WORK_WARNING },
-#line 77 "libgearman/command.gperf"
-    {"GRAB_JOB", GEARMAN_COMMAND_GRAB_JOB},
-#line 93 "libgearman/command.gperf"
-    {"WORK_EXCEPTION", GEARMAN_COMMAND_WORK_EXCEPTION },
-#line 79 "libgearman/command.gperf"
-    {"JOB_ASSIGN", GEARMAN_COMMAND_JOB_ASSIGN },
-#line 73 "libgearman/command.gperf"
-    {"UNUSED", GEARMAN_COMMAND_UNUSED},
-#line 82 "libgearman/command.gperf"
-    {"WORK_FAIL",GEARMAN_COMMAND_WORK_FAIL},
-#line 83 "libgearman/command.gperf"
-    {"GET_STATUS",GEARMAN_COMMAND_GET_STATUS},
-#line 80 "libgearman/command.gperf"
-    {"WORK_STATUS", GEARMAN_COMMAND_WORK_STATUS},
-#line 107 "libgearman/command.gperf"
-    {"GRAB_JOB_ALL", GEARMAN_COMMAND_GRAB_JOB_ALL },
-#line 86 "libgearman/command.gperf"
-    {"SUBMIT_JOB_BG", GEARMAN_COMMAND_SUBMIT_JOB_BG },
-#line 101 "libgearman/command.gperf"
-    {"SUBMIT_JOB_LOW", GEARMAN_COMMAND_SUBMIT_JOB_LOW },
-#line 75 "libgearman/command.gperf"
-    {"SUBMIT_JOB", GEARMAN_COMMAND_SUBMIT_JOB },
 #line 76 "libgearman/command.gperf"
-    {"JOB_CREATED", GEARMAN_COMMAND_JOB_CREATED},
-#line 102 "libgearman/command.gperf"
-    {"SUBMIT_JOB_LOW_BG", GEARMAN_COMMAND_SUBMIT_JOB_LOW_BG },
-#line 100 "libgearman/command.gperf"
-    {"SUBMIT_JOB_HIGH_BG", GEARMAN_COMMAND_SUBMIT_JOB_HIGH_BG },
-#line 108 "libgearman/command.gperf"
-    {"JOB_ASSIGN_ALL", GEARMAN_COMMAND_JOB_ASSIGN_ALL },
-#line 88 "libgearman/command.gperf"
-    {"STATUS_RES", GEARMAN_COMMAND_STATUS_RES},
-#line 105 "libgearman/command.gperf"
-    {"SUBMIT_REDUCE_JOB", GEARMAN_COMMAND_SUBMIT_REDUCE_JOB},
-#line 90 "libgearman/command.gperf"
-    {"SET_CLIENT_ID", GEARMAN_COMMAND_SET_CLIENT_ID},
-#line 74 "libgearman/command.gperf"
-    {"NOOP", GEARMAN_COMMAND_NOOP},
+    {"NO_JOB", GEARMAN_COMMAND_NO_JOB},
 #line 95 "libgearman/command.gperf"
-    {"OPTION_RES", GEARMAN_COMMAND_OPTION_RES},
-#line 103 "libgearman/command.gperf"
-    {"SUBMIT_JOB_SCHED", GEARMAN_COMMAND_SUBMIT_JOB_SCHED },
-#line 81 "libgearman/command.gperf"
-    {"WORK_COMPLETE", GEARMAN_COMMAND_WORK_COMPLETE },
+    {"WORK_WARNING", GEARMAN_COMMAND_WORK_WARNING },
+#line 75 "libgearman/command.gperf"
+    {"GRAB_JOB", GEARMAN_COMMAND_GRAB_JOB},
 #line 91 "libgearman/command.gperf"
-    {"CAN_DO_TIMEOUT", GEARMAN_COMMAND_CAN_DO_TIMEOUT},
+    {"WORK_EXCEPTION", GEARMAN_COMMAND_WORK_EXCEPTION },
+#line 77 "libgearman/command.gperf"
+    {"JOB_ASSIGN", GEARMAN_COMMAND_JOB_ASSIGN },
 #line 71 "libgearman/command.gperf"
-    {"RESET_ABILITIES", GEARMAN_COMMAND_RESET_ABILITIES},
-#line 109 "libgearman/command.gperf"
-    {"GET_STATUS_UNIQUE", GEARMAN_COMMAND_GET_STATUS_UNIQUE},
-#line 85 "libgearman/command.gperf"
-    {"ECHO_RES", GEARMAN_COMMAND_ECHO_RES },
-#line 96 "libgearman/command.gperf"
-    {"WORK_DATA", GEARMAN_COMMAND_WORK_DATA },
-#line 87 "libgearman/command.gperf"
-    {"ERROR", GEARMAN_COMMAND_ERROR},
-#line 69 "libgearman/command.gperf"
-    {"CAN_DO", GEARMAN_COMMAND_CAN_DO},
-#line 70 "libgearman/command.gperf"
-    {"CANT_DO", GEARMAN_COMMAND_CANT_DO},
-#line 106 "libgearman/command.gperf"
-    {"SUBMIT_REDUCE_JOB_BACKGROUND", GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND},
-#line 89 "libgearman/command.gperf"
-    {"SUBMIT_JOB_HIGH", GEARMAN_COMMAND_SUBMIT_JOB_HIGH },
-#line 104 "libgearman/command.gperf"
-    {"SUBMIT_JOB_EPOCH", GEARMAN_COMMAND_SUBMIT_JOB_EPOCH },
-#line 110 "libgearman/command.gperf"
-    {"STATUS_RES_UNIQUE", GEARMAN_COMMAND_STATUS_RES_UNIQUE},
-#line 98 "libgearman/command.gperf"
-    {"GRAB_JOB_UNIQ", GEARMAN_COMMAND_GRAB_JOB_UNIQ},
-#line 92 "libgearman/command.gperf"
-    {"ALL_YOURS", GEARMAN_COMMAND_ALL_YOURS},
-#line 99 "libgearman/command.gperf"
-    {"JOB_ASSIGN_UNIQ", GEARMAN_COMMAND_JOB_ASSIGN_UNIQ },
-#line 94 "libgearman/command.gperf"
-    {"OPTION_REQ", GEARMAN_COMMAND_OPTION_REQ},
-#line 72 "libgearman/command.gperf"
-    {"PRE_SLEEP", GEARMAN_COMMAND_PRE_SLEEP},
+    {"UNUSED", GEARMAN_COMMAND_UNUSED},
+#line 80 "libgearman/command.gperf"
+    {"WORK_FAIL",GEARMAN_COMMAND_WORK_FAIL},
+#line 81 "libgearman/command.gperf"
+    {"GET_STATUS",GEARMAN_COMMAND_GET_STATUS},
+#line 78 "libgearman/command.gperf"
+    {"WORK_STATUS", GEARMAN_COMMAND_WORK_STATUS},
+#line 105 "libgearman/command.gperf"
+    {"GRAB_JOB_ALL", GEARMAN_COMMAND_GRAB_JOB_ALL },
 #line 84 "libgearman/command.gperf"
+    {"SUBMIT_JOB_BG", GEARMAN_COMMAND_SUBMIT_JOB_BG },
+#line 99 "libgearman/command.gperf"
+    {"SUBMIT_JOB_LOW", GEARMAN_COMMAND_SUBMIT_JOB_LOW },
+#line 73 "libgearman/command.gperf"
+    {"SUBMIT_JOB", GEARMAN_COMMAND_SUBMIT_JOB },
+#line 74 "libgearman/command.gperf"
+    {"JOB_CREATED", GEARMAN_COMMAND_JOB_CREATED},
+#line 100 "libgearman/command.gperf"
+    {"SUBMIT_JOB_LOW_BG", GEARMAN_COMMAND_SUBMIT_JOB_LOW_BG },
+#line 98 "libgearman/command.gperf"
+    {"SUBMIT_JOB_HIGH_BG", GEARMAN_COMMAND_SUBMIT_JOB_HIGH_BG },
+#line 106 "libgearman/command.gperf"
+    {"JOB_ASSIGN_ALL", GEARMAN_COMMAND_JOB_ASSIGN_ALL },
+#line 86 "libgearman/command.gperf"
+    {"STATUS_RES", GEARMAN_COMMAND_STATUS_RES},
+#line 103 "libgearman/command.gperf"
+    {"SUBMIT_REDUCE_JOB", GEARMAN_COMMAND_SUBMIT_REDUCE_JOB},
+#line 88 "libgearman/command.gperf"
+    {"SET_CLIENT_ID", GEARMAN_COMMAND_SET_CLIENT_ID},
+#line 72 "libgearman/command.gperf"
+    {"NOOP", GEARMAN_COMMAND_NOOP},
+#line 93 "libgearman/command.gperf"
+    {"OPTION_RES", GEARMAN_COMMAND_OPTION_RES},
+#line 101 "libgearman/command.gperf"
+    {"SUBMIT_JOB_SCHED", GEARMAN_COMMAND_SUBMIT_JOB_SCHED },
+#line 79 "libgearman/command.gperf"
+    {"WORK_COMPLETE", GEARMAN_COMMAND_WORK_COMPLETE },
+#line 89 "libgearman/command.gperf"
+    {"CAN_DO_TIMEOUT", GEARMAN_COMMAND_CAN_DO_TIMEOUT},
+#line 69 "libgearman/command.gperf"
+    {"RESET_ABILITIES", GEARMAN_COMMAND_RESET_ABILITIES},
+#line 107 "libgearman/command.gperf"
+    {"GET_STATUS_UNIQUE", GEARMAN_COMMAND_GET_STATUS_UNIQUE},
+#line 83 "libgearman/command.gperf"
+    {"ECHO_RES", GEARMAN_COMMAND_ECHO_RES },
+#line 94 "libgearman/command.gperf"
+    {"WORK_DATA", GEARMAN_COMMAND_WORK_DATA },
+#line 85 "libgearman/command.gperf"
+    {"ERROR", GEARMAN_COMMAND_ERROR},
+#line 67 "libgearman/command.gperf"
+    {"CAN_DO", GEARMAN_COMMAND_CAN_DO},
+#line 68 "libgearman/command.gperf"
+    {"CANT_DO", GEARMAN_COMMAND_CANT_DO},
+#line 104 "libgearman/command.gperf"
+    {"SUBMIT_REDUCE_JOB_BACKGROUND", GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND},
+#line 87 "libgearman/command.gperf"
+    {"SUBMIT_JOB_HIGH", GEARMAN_COMMAND_SUBMIT_JOB_HIGH },
+#line 102 "libgearman/command.gperf"
+    {"SUBMIT_JOB_EPOCH", GEARMAN_COMMAND_SUBMIT_JOB_EPOCH },
+#line 108 "libgearman/command.gperf"
+    {"STATUS_RES_UNIQUE", GEARMAN_COMMAND_STATUS_RES_UNIQUE},
+#line 96 "libgearman/command.gperf"
+    {"GRAB_JOB_UNIQ", GEARMAN_COMMAND_GRAB_JOB_UNIQ},
+#line 90 "libgearman/command.gperf"
+    {"ALL_YOURS", GEARMAN_COMMAND_ALL_YOURS},
+#line 97 "libgearman/command.gperf"
+    {"JOB_ASSIGN_UNIQ", GEARMAN_COMMAND_JOB_ASSIGN_UNIQ },
+#line 92 "libgearman/command.gperf"
+    {"OPTION_REQ", GEARMAN_COMMAND_OPTION_REQ},
+#line 70 "libgearman/command.gperf"
+    {"PRE_SLEEP", GEARMAN_COMMAND_PRE_SLEEP},
+#line 82 "libgearman/command.gperf"
     {"ECHO_REQ", GEARMAN_COMMAND_ECHO_REQ }
   };
 
-#ifdef __GNUC__
-__inline
-#if defined __GNUC_STDC_INLINE__ || defined __GNUC_GNU_INLINE__
-__attribute__ ((__gnu_inline__))
-#endif
-#endif
 const struct gearman_command_string_st *
-command_string2command_code (register const char *str, register unsigned int len)
+String2gearman_command_t::in_word_set (register const char *str, register unsigned int len)
 {
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
     {
@@ -604,8 +597,5 @@ command_string2command_code (register const char *str, register unsigned int len
     }
   return 0;
 }
-#line 111 "libgearman/command.gperf"
+#line 109 "libgearman/command.gperf"
 
-
-} // namespace gearman
-} // namespace org

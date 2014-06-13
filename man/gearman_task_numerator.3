@@ -1,4 +1,6 @@
-.TH "GEARMAN_TASK_NUMERATOR" "3" "June 06, 2013" "1.1.8" "Gearmand"
+.\" Man page generated from reStructuredText.
+.
+.TH "GEARMAN_TASK_NUMERATOR" "3" "July 29, 2013" "1.1.8" "Gearmand"
 .SH NAME
 gearman_task_numerator \- Gearmand Documentation, http://gearman.info/
 .
@@ -28,8 +30,33 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.\" Man page generated from reStructuredText.
 .
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
 .sp
 #include <libgearman/gearman.h>
@@ -117,23 +144,23 @@ New in version 0.21.
 Link with \-lgearman
 .SH DESCRIPTION
 .sp
-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+A \fI\%gearman_task_st\fP represents a \fItask\fP\&.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP\&.
 .sp
-Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or \fBgearman_client_add_task_background()\fP.
+Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or \fBgearman_client_add_task_background()\fP\&.
 .sp
 \fBgearman_client_add_task_status()\fP can also create \fI\%gearman_task_st\fP, these tasks will be used to
-monitor a previously created \fI\%gearman_task_st\fP.
+monitor a previously created \fI\%gearman_task_st\fP\&.
 .sp
 \fI\%gearman_task_free()\fP is used to free a task. This only needs to be
 done if a task was created with a preallocated structure or if you want to clean up the memory of a specific task.
 .sp
-\fI\%gearman_task_set_context()\fP sets the given context of the \fI\%gearman_task_st\fP. The context can be used to pass information to a \fI\%gearman_task_st\fP.
+\fI\%gearman_task_set_context()\fP sets the given context of the \fI\%gearman_task_st\fP\&. The context can be used to pass information to a \fI\%gearman_task_st\fP\&.
 .sp
-\fI\%gearman_task_context()\fP returns the context that was used in the creation of the \fI\%gearman_task_st\fP (or that was set with \fI\%gearman_task_set_context()\fP.
+\fI\%gearman_task_context()\fP returns the context that was used in the creation of the \fI\%gearman_task_st\fP (or that was set with \fI\%gearman_task_set_context()\fP\&.
 .sp
 \fI\%gearman_task_data()\fP returns the current data that has been returned to the task. \fI\%gearman_task_data_size()\fP will give you the size of the value. \fI\%gearman_task_take_data()\fP is the same as \fI\%gearman_task_data()\fP but the value that is returned must be freed by the client (\fIfree(3)\fP). \fI\%gearman_task_recv_data()\fP can be used with pre\-allocated buffers.
 .sp
-\fI\%gearman_task_is_known()\fP, \fI\%gearman_task_is_running()\fP, \fI\%gearman_task_numerator()\fP, and \fI\%gearman_task_denominator()\fP, return values related to the last status update that was made to the \fI\%gearman_task_st\fP. They do not cause the \fI\%gearman_task_st\fP to update itself.
+\fI\%gearman_task_is_known()\fP, \fI\%gearman_task_is_running()\fP, \fI\%gearman_task_numerator()\fP, and \fI\%gearman_task_denominator()\fP, return values related to the last status update that was made to the \fI\%gearman_task_st\fP\&. They do not cause the \fI\%gearman_task_st\fP to update itself.
 .sp
 \fI\%gearman_task_error()\fP return the last error message that the
 \fI\%gearman_task_st\fP encountered. \fI\%gearman_task_return()\fP

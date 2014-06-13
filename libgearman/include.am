@@ -20,6 +20,7 @@ noinst_HEADERS+= libgearman/magic.h
 noinst_HEADERS+= libgearman/client.h
 noinst_HEADERS+= libgearman/check.h
 noinst_HEADERS+= libgearman/interface/client.hpp
+noinst_HEADERS+= libgearman/interface/error.hpp
 noinst_HEADERS+= libgearman/interface/packet.hpp
 noinst_HEADERS+= libgearman/interface/push.hpp
 noinst_HEADERS+= libgearman/interface/task.hpp
@@ -56,7 +57,9 @@ noinst_HEADERS+= \
 		 libgearman/log.hpp \
 		 libgearman/packet.hpp \
 		 libgearman/protocol/echo.h \
+		 libgearman/protocol/option.h \
 		 libgearman/protocol/submit.h \
+		 libgearman/protocol/work_exception.h \
 		 libgearman/result.hpp \
 		 libgearman/run.hpp \
 		 libgearman/status.hpp \
@@ -115,7 +118,9 @@ libgearman_libgearman_la_SOURCES+= \
 				  libgearman/packet.cc \
 				  libgearman/parse.cc \
 				  libgearman/protocol/echo.cc \
+				  libgearman/protocol/option.cc \
 				  libgearman/protocol/submit.cc \
+				  libgearman/protocol/work_exception.cc \
 				  libgearman/result.cc \
 				  libgearman/run.cc \
 				  libgearman/status.cc \
@@ -141,7 +146,7 @@ libgearman_libgearman_la_LIBADD+= @DL_LIB@
 libgearman_libgearman_la_LIBADD+= @LIBUUID_LIB@
 libgearman_libgearman_la_LIBADD+= libhashkit/libhashkit.la
 
-if TARGET_LINUX
+if HOST_LINUX
 libgearman_libgearman_la_LIBADD+= @LIBM@
 endif
 
@@ -165,7 +170,7 @@ EXTRA_DIST+= libgearman/error_code.gperf
 BUILT_SOURCES+= libgearman/error_code.hpp
 libgearman_libgearman_la_SOURCES+= libgearman/error_code.hpp
 libgearman/error_code.hpp: libgearman/error_code.gperf
-	if $(GPERF) $(GPERFFLAGS) --key-positions=9,10,11,17 --struct-type \
+	if $(GPERF) $(GPERFFLAGS) --struct-type \
 	  libgearman/error_code.gperf >$@t; then \
 	  mv $@t $@; \
 	  elif $(GPERF) --version >/dev/null 2>&1; then \

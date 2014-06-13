@@ -48,6 +48,9 @@
 #include <cstdio>
 #include <cstring>
 
+#include <sys/types.h>
+#include <unistd.h>
+
 static void correct_from_errno(gearman_universal_st& universal)
 {
   if (universal.error_code() == GEARMAN_ERRNO)
@@ -85,6 +88,33 @@ static void correct_from_errno(gearman_universal_st& universal)
   }
 }
 
+#ifdef __clang__
+# pragma clang diagnostic push
+#else
+# pragma GCC diagnostic push
+#endif
+#pragma GCC diagnostic ignored "-Wswitch-enum"
+static bool no_error_message(gearman_return_t rc)
+{
+  switch (rc)
+  {
+    case GEARMAN_SUCCESS:
+    case GEARMAN_IO_WAIT:
+    case GEARMAN_INVALID_SERVER_OPTION:
+    case GEARMAN_WORK_EXCEPTION:
+    case GEARMAN_WORK_FAIL:
+    case GEARMAN_SHUTDOWN_GRACEFUL:
+    case GEARMAN_SHUTDOWN:
+      return true;
+
+    default:
+      break;
+  }
+
+  return false;
+}
+#pragma GCC diagnostic pop
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 gearman_return_t gearman_universal_set_error(gearman_universal_st& universal, 
@@ -93,14 +123,14 @@ gearman_return_t gearman_universal_set_error(gearman_universal_st& universal,
                                              const char *position,
                                              const char *format, ...)
 {
-  if (rc == GEARMAN_SUCCESS)
+  if (no_error_message(rc))
   {
-    return GEARMAN_SUCCESS;
+    return universal.error_code(rc);
   }
 
   va_list args;
 
-  universal._error.rc= rc;
+  universal.error_code(rc);
   correct_from_errno(universal);
 
   char last_error[GEARMAN_MAX_ERROR_SIZE];
@@ -112,21 +142,23 @@ gearman_return_t gearman_universal_set_error(gearman_universal_st& universal,
   {
     assert(length > int(GEARMAN_MAX_ERROR_SIZE));
     assert(length < 0);
-    universal._error.last_error[GEARMAN_MAX_ERROR_SIZE -1]= 0;
+    last_error[GEARMAN_MAX_ERROR_SIZE -1]= 0;
   }
 
-  length= snprintf(universal._error.last_error, GEARMAN_MAX_ERROR_SIZE, "%s(%s) %s -> %s", function, gearman_strerror(universal._error.rc), last_error, position);
-  if (length > int(GEARMAN_MAX_ERROR_SIZE) or length < 0)
+  if (rc == GEARMAN_GETADDRINFO)
   {
-    assert(length > int(GEARMAN_MAX_ERROR_SIZE));
-    assert(length < 0);
-    universal._error.last_error[GEARMAN_MAX_ERROR_SIZE -1]= 0;
+    universal._error.error("%s pid(%u)", last_error, getpid());
+  }
+  else
+  {
+    universal._error.error("%s(%s) %s -> %s pid(%u)", 
+                           function, gearman_strerror(universal._error.error_code()), last_error, position, getpid());
   }
 
   gearman_log_error(universal,
-                    universal._error.rc == GEARMAN_MEMORY_ALLOCATION_FAILURE ? GEARMAN_VERBOSE_FATAL : GEARMAN_VERBOSE_ERROR);
+                    universal._error.error_code() == GEARMAN_MEMORY_ALLOCATION_FAILURE ? GEARMAN_VERBOSE_FATAL : GEARMAN_VERBOSE_ERROR);
 
-  return universal._error.rc;
+  return universal._error.error_code();
 }
 #pragma GCC diagnostic pop
 
@@ -137,25 +169,18 @@ gearman_return_t gearman_universal_set_gerror(gearman_universal_st& universal,
                                               const char *func,
                                               const char *position)
 {
-  if (rc == GEARMAN_SUCCESS or rc == GEARMAN_IO_WAIT)
+  if (no_error_message(rc))
   {
-    return rc;
+    return universal.error_code(rc);
   }
 
-  universal._error.rc= rc;
+  universal.error_code(rc);
   correct_from_errno(universal);
 
-  int length= snprintf(universal._error.last_error, GEARMAN_MAX_ERROR_SIZE, "%s(%s) -> %s", func, gearman_strerror(rc), position);
-  if (length > int(GEARMAN_MAX_ERROR_SIZE) or length < 0)
-  {
-    assert(length > int(GEARMAN_MAX_ERROR_SIZE));
-    assert(length < 0);
-    universal._error.last_error[GEARMAN_MAX_ERROR_SIZE -1]= 0;
-    return GEARMAN_ARGUMENT_TOO_LARGE;
-  }
+  universal._error.error("%s(%s) -> %s pid(%u)", func, gearman_strerror(rc), position, getpid());
 
   gearman_log_error(universal,
-                    universal._error.rc == GEARMAN_MEMORY_ALLOCATION_FAILURE ? GEARMAN_VERBOSE_FATAL : GEARMAN_VERBOSE_ERROR);
+                    universal.error_code() == GEARMAN_MEMORY_ALLOCATION_FAILURE ? GEARMAN_VERBOSE_FATAL : GEARMAN_VERBOSE_ERROR);
 
   return rc;
 }
@@ -164,59 +189,90 @@ gearman_return_t gearman_universal_set_gerror(gearman_universal_st& universal,
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 gearman_return_t gearman_universal_set_perror(gearman_universal_st &universal,
+                                              const int _system_errno,
                                               const char *function, const char *position, 
-                                              const char *message)
+                                              const char *format, ...)
 {
-  if (errno == 0)
+  if (_system_errno)
   {
-    return GEARMAN_SUCCESS;
-  }
+    switch (_system_errno)
+    {
+      case ENOMEM:
+        universal._error.error_code(GEARMAN_MEMORY_ALLOCATION_FAILURE);
+        break;
 
-  switch (errno)
-  {
-  case ENOMEM:
-    universal._error.rc= GEARMAN_MEMORY_ALLOCATION_FAILURE;
-    break;
+      default:
+        universal._error.error_code(GEARMAN_ERRNO);
+        break;
+    }
+    universal._error.system_error(_system_errno);
 
-  default:
-    universal._error.rc= GEARMAN_ERRNO;
-    break;
-  }
-  universal._error.last_errno= errno;
+    correct_from_errno(universal);
 
-  correct_from_errno(universal);
-
-  const char *errmsg_ptr;
-  char errmsg[GEARMAN_MAX_ERROR_SIZE]; 
-  errmsg[0]= 0; 
+    const char *errmsg_ptr;
+    char errmsg[GEARMAN_MAX_ERROR_SIZE]; 
+    errmsg[0]= 0; 
 
 #ifdef STRERROR_R_CHAR_P
-  errmsg_ptr= strerror_r(universal._error.last_errno, errmsg, sizeof(errmsg));
+    errmsg_ptr= strerror_r(universal._error.system_error(), errmsg, sizeof(errmsg));
 #else
-  strerror_r(universal._error.last_errno, errmsg, sizeof(errmsg));
-  errmsg_ptr= errmsg;
+    strerror_r(universal._error.system_error(), errmsg, sizeof(errmsg));
+    errmsg_ptr= errmsg;
 #endif
 
-  int length;
-  if (message)
-  {
-    length= snprintf(universal._error.last_error, GEARMAN_MAX_ERROR_SIZE, "%s(%s) %s -> %s", function, errmsg_ptr, message, position);
-  }
-  else
-  {
-    length= snprintf(universal._error.last_error, GEARMAN_MAX_ERROR_SIZE, "%s(%s) -> %s", function, errmsg_ptr, position);
+    int length;
+    if (format)
+    {
+      char last_error[GEARMAN_MAX_ERROR_SIZE];
+
+      va_list args;
+      va_start(args, format);
+      errno= 0;
+      length= vsnprintf(last_error, GEARMAN_MAX_ERROR_SIZE, format, args);
+      va_end(args);
+
+      if (length > int(GEARMAN_MAX_ERROR_SIZE) or length < 0)
+      {
+        assert(length > int(GEARMAN_MAX_ERROR_SIZE));
+        assert(length < 0);
+        last_error[GEARMAN_MAX_ERROR_SIZE -1]= 0;
+      }
+
+      universal._error.error("%s(%s) %s -> %s pid(%u)", function, errmsg_ptr, last_error, position, getpid());
+    }
+    else
+    {
+      universal._error.error("%s(%s) -> %s pid(%d)", function, errmsg_ptr, position, getpid());
+    }
+
+    gearman_log_error(universal,
+                      universal._error.error_code() == GEARMAN_MEMORY_ALLOCATION_FAILURE ? GEARMAN_VERBOSE_FATAL : GEARMAN_VERBOSE_ERROR);
+
+    return universal._error.error_code();
   }
 
-  if (length > int(GEARMAN_MAX_ERROR_SIZE) or length < 0)
+  return GEARMAN_SUCCESS;
+}
+#pragma GCC diagnostic pop
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+const char* error_st::error(const char * __restrict format__, ...)
+{
+  if (format__)
   {
-    assert(length > int(GEARMAN_MAX_ERROR_SIZE));
-    assert(length < 0);
-    universal._error.last_error[GEARMAN_MAX_ERROR_SIZE -1]= 0;
+    va_list args;
+
+    va_start(args, format__);
+    vsnprintf(_last_error, GEARMAN_MAX_ERROR_SIZE, format__, args);
+    va_end(args);
+
+    _last_error[GEARMAN_MAX_ERROR_SIZE -1]= 0;
+
+    return _last_error;
   }
+  _last_error[0]= 0;
 
-  gearman_log_error(universal,
-                    universal._error.rc == GEARMAN_MEMORY_ALLOCATION_FAILURE ? GEARMAN_VERBOSE_FATAL : GEARMAN_VERBOSE_ERROR);
-
-  return universal._error.rc;
+  return NULL;
 }
 #pragma GCC diagnostic pop

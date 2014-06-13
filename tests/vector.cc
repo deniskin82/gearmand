@@ -199,6 +199,8 @@ static test_return_t bigger_resize_TEST(void*)
   return TEST_SUCCESS;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverflow"
 static test_return_t INT64_MAX_resize_TEST(void*)
 {
   const size_t max_block= 10 * GEARMAN_VECTOR_BLOCK_SIZE;
@@ -210,6 +212,7 @@ static test_return_t INT64_MAX_resize_TEST(void*)
 
   return TEST_SUCCESS;
 }
+#pragma GCC diagnostic pop
 
 static test_return_t random_resize_TEST(void*)
 {
@@ -479,7 +482,7 @@ static test_return_t gearman_string_take_TEST(void*)
 
     // Now we insert a random string
     libtest::vchar_t random_string;
-    libtest::vchar::make(random_string, random() % max_block);
+    libtest::vchar::make(random_string, (random() % max_block) +1);
     gearman_string_append(&vec, &random_string[0], random_string.size());
 
     gearman_string_t temp= gearman_string_take_string(&vec);

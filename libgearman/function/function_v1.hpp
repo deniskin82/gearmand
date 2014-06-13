@@ -55,27 +55,29 @@ public:
     return bool(_worker_fn);
   }
 
-  gearman_function_error_t callback(gearman_job_st* job, void *context_arg)
+  gearman_function_error_t callback(gearman_job_st* job_shell, void *context_arg)
   {
+    Job* job= job_shell->impl();
+
     if (gearman_job_is_map(job))
     {
       gearman_job_build_reducer(job, NULL);
     }
 
-    job->error_code= GEARMAN_SUCCESS;
-    job->worker->impl()->work_result= _worker_fn(job, context_arg, &(job->worker->impl()->work_result_size), &job->error_code);
+    job->_error_code= GEARMAN_SUCCESS;
+    job->_worker.work_result= _worker_fn(job_shell, context_arg, &(job->_worker.work_result_size), &job->_error_code);
 
-    if (job->error_code == GEARMAN_LOST_CONNECTION)
+    if (job->_error_code == GEARMAN_LOST_CONNECTION)
     {
       return GEARMAN_FUNCTION_ERROR;
     }
 
-    if (job->error_code == GEARMAN_SHUTDOWN)
+    if (job->_error_code == GEARMAN_SHUTDOWN)
     {
       return GEARMAN_FUNCTION_SHUTDOWN;
     }
 
-    if (gearman_failed(job->error_code))
+    if (gearman_failed(job->_error_code))
     {
       return GEARMAN_FUNCTION_FATAL;
     }

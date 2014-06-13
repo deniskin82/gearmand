@@ -1,4 +1,6 @@
-.TH "GEARMAN_CONTINUE" "3" "June 06, 2013" "1.1.8" "Gearmand"
+.\" Man page generated from reStructuredText.
+.
+.TH "GEARMAN_CONTINUE" "3" "July 29, 2013" "1.1.8" "Gearmand"
 .SH NAME
 gearman_continue \- Gearmand Documentation, http://gearman.info/
 .
@@ -28,8 +30,33 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.\" Man page generated from reStructuredText.
 .
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
 .sp
 #include <libgearman/gearman.h>
@@ -57,9 +84,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 Compile and link with \-lgearman
 .SH DESCRIPTION
 .sp
-\fI\%gearman_return_t\fP is used as a return/error type for all calls using \fBgearman_client_st\fP and \fBgearman_worker_st\fP.
+\fI\%gearman_return_t\fP is used as a return/error type for all calls using \fBgearman_client_st\fP and \fBgearman_worker_st\fP\&.
 \fI\%GEARMAN_SUCCESS\fP is returned upon success, otherwise an error is returned. \fI\%gearman_failed()\fP can be used to see if the return value is a failing value.
-You can print a text version of the error message with \fI\%gearman_strerror()\fP.
+You can print a text version of the error message with \fI\%gearman_strerror()\fP\&.
 .sp
 \fI\%gearman_success()\fP return true if \fI\%GEARMAN_SUCCESS\fP or if
 \fI\%GEARMAN_NO_PENDING_TASKS\fP tests true.
@@ -211,7 +238,7 @@ The worker has not registered any functions.
 .INDENT 0.0
 .TP
 .B GEARMAN_NO_JOBS
-No jobs were found for the worker.
+No jobs were found for the worker. This error code is only returned if the worker has just made a request for jobs.
 .UNINDENT
 .SS WORKER TO CLIENT
 .sp
@@ -250,7 +277,7 @@ A task has had an error and will be retried.
 .INDENT 0.0
 .TP
 .B GEARMAN_PAUSE
-Used only in custom application for client return based on \fI\%GEARMAN_WORK_DATA\fP, \fI\%GEARMAN_WORK_WARNING\fP, \fI\%GEARMAN_WORK_EXCEPTION\fP, \fI\%GEARMAN_WORK_FAIL\fP, or \fI\%GEARMAN_WORK_STATUS\fP. \fI\%gearman_continue()\fP can be used to check for this value.
+Used only in custom application for client return based on \fI\%GEARMAN_WORK_DATA\fP, \fI\%GEARMAN_WORK_WARNING\fP, \fI\%GEARMAN_WORK_EXCEPTION\fP, \fI\%GEARMAN_WORK_FAIL\fP, or \fI\%GEARMAN_WORK_STATUS\fP\&. \fI\%gearman_continue()\fP can be used to check for this value.
 .UNINDENT
 .SS WORKER TO CLIENT
 .sp
@@ -277,7 +304,7 @@ A task has had an error and will be retried.
 .INDENT 0.0
 .TP
 .B GEARMAN_SHUTDOWN
-\fI\%GEARMAN_SHUTDOWN\fP is a special case. If it is returned the client will be sent \fI\%GEARMAN_SUCCESS\fP, but \fBgearman_worker_work()\fP will exit with \fI\%GEARMAN_SHUTDOWN\fP.
+\fI\%GEARMAN_SHUTDOWN\fP is a special case. If it is returned the client will be sent \fI\%GEARMAN_SUCCESS\fP, but \fBgearman_worker_work()\fP will exit with \fI\%GEARMAN_SHUTDOWN\fP\&.
 .UNINDENT
 .SS TASK ONLY
 .INDENT 0.0

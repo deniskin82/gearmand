@@ -1,4 +1,6 @@
-.TH "GEARMAN_CLIENT_DO_LOW_BACKGROUND" "3" "June 06, 2013" "1.1.8" "Gearmand"
+.\" Man page generated from reStructuredText.
+.
+.TH "GEARMAN_CLIENT_DO_LOW_BACKGROUND" "3" "July 29, 2013" "1.1.8" "Gearmand"
 .SH NAME
 gearman_client_do_low_background \- Gearmand Documentation, http://gearman.info/
 .
@@ -28,8 +30,33 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.\" Man page generated from reStructuredText.
 .
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
 .sp
 #include <libgearman/gearman.h>
@@ -54,14 +81,14 @@ Changed in version 0.21: \fBGEARMAN_PAUSE\fP will no longer be returned. A do op
 .SH DESCRIPTION
 .sp
 \fI\%gearman_client_do_background()\fP executes a single request to the
-gearmand server and returns the status via \fBgearman_return_t\fP.
+gearmand server and returns the status via \fBgearman_return_t\fP\&.
 .sp
 \fBgearman_client_add_task_high_background()\fP and \fBgearman_client_add_task_low_background()\fP are identical to
 \fI\%gearman_client_do_background()\fP, only they set the \fI\%gearman_priority_t\fP to either high or low.
 .sp
 If job_handle is not NULL, it will be populated with the name of the job_handle
 for the task created. The job handle needs to be the size of
-\fBGEARMAN_JOB_HANDLE_SIZE\fP. Please see \fBgearman_job_handle_t\fP for more information.
+\fBGEARMAN_JOB_HANDLE_SIZE\fP\&. Please see \fBgearman_job_handle_t\fP for more information.
 .SH RETURN VALUE
 .sp
 \fBgearman_return_t\fP

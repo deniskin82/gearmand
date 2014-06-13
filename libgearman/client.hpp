@@ -43,6 +43,16 @@
 
 #include <stdexcept>
 #include <libgearman-1.0/gearman.h>
+#include <stdio.h>
+
+namespace {
+
+inline void all_client_PRINTER(const char *line, gearman_verbose_t verbose, void*)
+{
+  fprintf(stderr, "%s:%d %s(%s)\n", __FILE__, __LINE__, gearman_verbose_name(verbose), line);
+}
+
+}
 
 namespace org { namespace gearmand { namespace libgearman {
 
@@ -56,6 +66,8 @@ public:
     {
       throw std::runtime_error("gearman_client_create() failed");
     }
+    enable_logging();
+    enable_ssl();
   }
 
   Client(const gearman_client_st* arg)
@@ -66,6 +78,8 @@ public:
     {
       throw std::runtime_error("gearman_client_create() failed");
     }
+    enable_logging();
+    enable_ssl();
   }
 
   Client(in_port_t arg)
@@ -76,6 +90,8 @@ public:
     {
       throw std::runtime_error("gearman_client_create() failed");
     }
+    enable_logging();
+    enable_ssl();
     gearman_client_add_server(_client, "localhost", arg);
   }
 
@@ -92,6 +108,23 @@ public:
   ~Client()
   {
     gearman_client_free(_client);
+  }
+
+  void enable_logging()
+  { 
+    if (getenv("YATL_CLIENT_LOGGING"))
+    {
+      gearman_log_fn *func= all_client_PRINTER;
+      gearman_client_set_log_fn(_client, func, NULL, GEARMAN_VERBOSE_ERROR);
+    }
+  }
+
+  void enable_ssl()
+  { 
+    if (getenv("GEARMAND_CA_CERTIFICATE"))
+    {
+      gearman_client_add_options(_client, GEARMAN_CLIENT_SSL);
+    }
   }
 
 private:

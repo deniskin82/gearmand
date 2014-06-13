@@ -119,7 +119,6 @@ void gearman_server_packet_free(gearman_server_packet_st *packet,
     }
     else
     {
-      gearmand_debug("delete() gearman_server_packet_st");
       delete packet;
     }
   }
@@ -133,7 +132,6 @@ void gearman_server_packet_free(gearman_server_packet_st *packet,
     }
     else
     {
-      gearmand_debug("delete() gearman_server_packet_st");
       delete packet;
     }
   }
@@ -279,7 +277,17 @@ gearman_server_proc_packet_remove(gearman_server_con_st *con)
 const char *gearmand_strcommand(gearmand_packet_st *packet)
 {
   assert(packet);
-  return gearman_command_info(packet->command)->name;
+  if (packet)
+  {
+    const gearman_command_info_st* info= gearman_command_info(packet->command);
+
+    if (info)
+    {
+      return info->name;
+    }
+  }
+
+  return "__INVALID_PACKET_COMMAND";
 }
 
 inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
@@ -384,14 +392,12 @@ void gearmand_packet_free(gearmand_packet_st *packet)
 {
   if (packet->args != packet->args_buffer && packet->args != NULL)
   {
-    gearmand_debug("free packet's args");
     free(packet->args);
     packet->args= NULL;
   }
 
   if (packet->options.free_data && packet->data != NULL)
   {
-    gearmand_debug("free() packet's data");
     free((void *)packet->data); //@todo fix the need for the casting.
     packet->data= NULL;
   }

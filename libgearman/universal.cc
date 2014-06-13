@@ -54,6 +54,7 @@
 #include "libgearman/uuid.hpp"
 
 #include "libgearman/protocol/echo.h"
+#include "libgearman/protocol/option.h"
 
 #include "libgearman/ssl.h"
 
@@ -104,6 +105,8 @@ void gearman_universal_clone(gearman_universal_st &destination, const gearman_un
 
   (void)gearman_universal_set_option(destination, GEARMAN_UNIVERSAL_NON_BLOCKING, source.options.non_blocking);
 
+  destination.ssl(source.ssl());
+
   destination.timeout= source.timeout;
 
   destination._namespace= gearman_string_clone(source._namespace);
@@ -112,7 +115,7 @@ void gearman_universal_clone(gearman_universal_st &destination, const gearman_un
   destination.log_fn= source.log_fn;
   destination.log_context= source.log_context;
 
-  for (gearman_connection_st *con= source.con_list; con; con= con->next)
+  for (gearman_connection_st *con= source.con_list; con; con= con->next_connection())
   {
     if (gearman_connection_copy(destination, *con) == NULL)
     {
@@ -171,7 +174,7 @@ gearman_return_t gearman_universal_set_option(gearman_universal_st &self, univer
 
   case GEARMAN_UNIVERSAL_MAX:
   default:
-    return GEARMAN_INVALID_COMMAND;
+    return gearman_gerror(self, GEARMAN_INVALID_COMMAND);
   }
 
   return GEARMAN_SUCCESS;
@@ -223,7 +226,7 @@ void gearman_free_all_cons(gearman_universal_st& universal)
 
 void gearman_reset(gearman_universal_st& universal)
 {
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     con->close_socket();
   }
@@ -236,7 +239,7 @@ void gearman_reset(gearman_universal_st& universal)
  */
 void gearman_flush_all(gearman_universal_st& universal)
 {
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     if (con->events & POLLOUT)
     {
@@ -272,14 +275,14 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
   }
 
   nfds_t x= 0;
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     if (con->events == 0)
     {
       continue;
     }
 
-    pfds[x].fd= con->fd;
+    pfds[x].fd= con->socket_descriptor();
     pfds[x].events= con->events;
     pfds[x].revents= 0;
     x++;
@@ -331,7 +334,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
   }
 
   x= 0;
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     if (con->events == 0)
     {
@@ -344,7 +347,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
       socklen_t len= sizeof (err);
       if (getsockopt(pfds[x].fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0)
       {
-        con->cached_errno= err;
+        con->error(err);
       }
     }
 
@@ -362,15 +365,20 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
       gearman_return_t local_ret= gearman_kill(gearman_universal_id(universal), GEARMAN_INTERRUPT);
       if (gearman_failed(local_ret))
       {
-        return GEARMAN_SHUTDOWN;
+        return gearman_gerror(universal, GEARMAN_SHUTDOWN);
       }
 
-      return GEARMAN_SHUTDOWN_GRACEFUL;
+      return gearman_gerror(universal, GEARMAN_SHUTDOWN_GRACEFUL);
     }
 
     if (read_length == 0)
     {
-      return GEARMAN_SHUTDOWN;
+      return gearman_gerror(universal, GEARMAN_SHUTDOWN);
+    }
+
+    if (read_length == -1)
+    {
+      gearman_perror(universal, "read() from shutdown pipe");
     }
 
 #if 0
@@ -388,7 +396,7 @@ gearman_connection_st *gearman_ready(gearman_universal_st& universal)
     We can't keep universal between calls since connections may be removed during
     processing. If this list ever gets big, we may want something faster.
   */
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     if (con->options.ready)
     {
@@ -409,6 +417,8 @@ gearman_universal_st::~gearman_universal_st()
   {
     CyaSSL_CTX_free(_ctx_ssl);
   }
+#else
+  assert(_ctx_ssl == NULL);
 #endif
 }
 
@@ -430,7 +440,7 @@ gearman_return_t gearman_universal_st::option(const universal_options_t& option_
 
     case GEARMAN_UNIVERSAL_MAX:
     default:
-      return GEARMAN_INVALID_COMMAND;
+      return gearman_gerror(*this, GEARMAN_INVALID_COMMAND);
   }
 
   return GEARMAN_SUCCESS;
@@ -438,32 +448,32 @@ gearman_return_t gearman_universal_st::option(const universal_options_t& option_
 
 bool gearman_universal_st::init_ssl()
 {
-  if (options._ssl)
+  if (ssl())
   {
 #if defined(HAVE_CYASSL) && HAVE_CYASSL
     CyaSSL_Init();
 
-    if ((_ctx_ssl = CyaSSL_CTX_new(CyaTLSv1_client_method())) == NULL)
+    if ((_ctx_ssl= CyaSSL_CTX_new(CyaTLSv1_client_method())) == NULL)
     {
-      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, "CyaTLSv1_client_method()");
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "CyaTLSv1_client_method() failed");
       return false;
     }
 
-    if (CyaSSL_CTX_load_verify_locations(_ctx_ssl, GEARMAND_CA_CERTIFICATE, 0) != SSL_SUCCESS)
+    if (CyaSSL_CTX_load_verify_locations(_ctx_ssl, ssl_ca_file(), 0) != SSL_SUCCESS)
     {
-      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, CA_CERT_PEM);
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load CA certificate %s", ssl_ca_file());
       return false;
     }
 
-    if (CyaSSL_CTX_use_certificate_file(_ctx_ssl, GEARMAND_CLIENT_PEM, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (CyaSSL_CTX_use_certificate_file(_ctx_ssl, ssl_certificate(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
     {   
-      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, CERT_PEM);
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load certificate %s", ssl_certificate());
       return false;
     }
 
-    if (CyaSSL_CTX_use_PrivateKey_file(_ctx_ssl, GEARMAND_CLIENT_KEY, SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (CyaSSL_CTX_use_PrivateKey_file(_ctx_ssl, ssl_key(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
     {   
-      gearman_error(*this, GEARMAN_INVALID_ARGUMENT, CERT_KEY_PEM);
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load certificate key %s", ssl_key());
       return false;
     }
 #endif // defined(HAVE_CYASSL) && HAVE_CYASSL
@@ -513,7 +523,7 @@ gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
 
   universal.identifier(id, id_size);
 
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     con->send_identifier();
   }
@@ -527,7 +537,7 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
 {
   gearman_return_t ret= GEARMAN_SUCCESS;
 
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     ret= con->send_packet(message, true);
     if (gearman_failed(ret))
@@ -542,7 +552,10 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
     gearman_packet_st *packet_ptr= con->receiving(con->_packet, ret, true);
     if (packet_ptr == NULL)
     {
-      assert(&con->_packet == universal.packet_list);
+      if (ret != GEARMAN_NOT_CONNECTED and ret != GEARMAN_LOST_CONNECTION)
+      {
+        assert(&con->_packet == universal.packet_list);
+      }
       con->options.packet_in_use= false;
       break;
     }
@@ -578,11 +591,42 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
   return ret;
 }
 
+gearman_return_t gearman_server_option(gearman_universal_st& universal, gearman_string_t& option)
+{
+  if (universal.has_connections() == false)
+  {
+    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
+  }
+
+  gearman_packet_st message;
+  gearman_return_t ret=  libgearman::protocol::option(universal, message, option);
+  if (gearman_success(ret))
+  {
+    PUSH_BLOCKING(universal);
+
+    OptionCheck check(universal, option);
+    ret= connection_loop(universal, message, check);
+  }
+  else
+  {
+    return universal.error_code();
+  }
+
+  gearman_packet_free(&message);
+
+  return ret;
+}
+
 
 gearman_return_t gearman_echo(gearman_universal_st& universal,
                               const void *workload_str,
                               size_t workload_size)
 {
+  if (universal.has_connections() == false)
+  {
+    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
+  }
+
   gearman_string_t workload= { static_cast<const char*>(workload_str), workload_size };
   gearman_packet_st message;
   gearman_return_t ret=  libgearman::protocol::echo(universal, message, workload);
