@@ -52,6 +52,8 @@
 #include "libgearman/log.hpp"
 #include "libgearman/vector.h"
 #include "libgearman/uuid.hpp"
+#include "libgearman/pipe.h"
+
 
 #include "libgearman/protocol/echo.h"
 #include "libgearman/protocol/option.h"
@@ -87,21 +89,9 @@ void gearman_nap(gearman_universal_st &self)
   gearman_nap(self.timeout);
 }
 
-void gearman_universal_clone(gearman_universal_st &destination, const gearman_universal_st &source, bool has_wakeup_fd)
+void gearman_universal_clone(gearman_universal_st &destination, const gearman_universal_st &source)
 {
-  int wakeup_fd[2];
-
-  if (has_wakeup_fd)
-  {
-    wakeup_fd[0]= destination.wakeup_fd[0];
-    wakeup_fd[1]= destination.wakeup_fd[1];
-  }
-
-  if (has_wakeup_fd)
-  {
-    destination.wakeup_fd[0]= wakeup_fd[0];
-    destination.wakeup_fd[1]= wakeup_fd[1];
-  }
+  destination.wakeup(source.has_wakeup());
 
   (void)gearman_universal_set_option(destination, GEARMAN_UNIVERSAL_NON_BLOCKING, source.options.non_blocking);
 
@@ -224,9 +214,26 @@ void gearman_free_all_cons(gearman_universal_st& universal)
   }
 }
 
-void gearman_reset(gearman_universal_st& universal)
+bool gearman_universal_st::wakeup(bool has_wakeup_)
 {
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
+  if (has_wakeup_)
+  {
+    if (wakeup_fd[0] == INVALID_SOCKET)
+    {
+      return setup_shutdown_pipe(wakeup_fd);
+    }
+
+    return true;
+  }
+
+  close_wakeup();
+
+  return true;
+}
+
+void gearman_universal_st::reset()
+{
+  for (gearman_connection_st *con= con_list; con; con= con->next_connection())
   {
     con->close_socket();
   }
@@ -237,9 +244,9 @@ void gearman_reset(gearman_universal_st& universal)
  * which connection experienced an issue. Error detection is better done in gearman_wait()
  * after flushing all the connections here.
  */
-void gearman_flush_all(gearman_universal_st& universal)
+void gearman_universal_st::flush()
 {
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
+  for (gearman_connection_st *con= con_list; con; con= con->next_connection())
   {
     if (con->events & POLLOUT)
     {
@@ -254,7 +261,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
 {
   struct pollfd *pfds;
 
-  bool have_shutdown_pipe= universal.wakeup_fd[0] == INVALID_SOCKET ? false : true;
+  bool have_shutdown_pipe= universal.has_wakeup();
   size_t con_count= universal.con_count +int(have_shutdown_pipe);
 
   if (universal.pfds_size < con_count)
@@ -316,10 +323,10 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
         continue;
 
       case EINVAL:
-        return gearman_perror(universal, "RLIMIT_NOFILE exceeded, or if OSX the timeout value was invalid");
+        return gearman_perror(universal, errno, "RLIMIT_NOFILE exceeded, or if OSX the timeout value was invalid");
 
       default:
-        return gearman_perror(universal, "poll");
+        return gearman_perror(universal, errno, "poll");
       }
     }
 
@@ -330,7 +337,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
   {
     return gearman_universal_set_error(universal, GEARMAN_TIMEOUT, GEARMAN_AT,
                                        "timeout reached, %u servers were poll(), no servers were available, pipe:%s",
-                                       uint32_t(x), have_shutdown_pipe ? "true" : "false");
+                                       uint32_t(x - have_shutdown_pipe), have_shutdown_pipe ? "true" : "false");
   }
 
   x= 0;
@@ -378,7 +385,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
 
     if (read_length == -1)
     {
-      gearman_perror(universal, "read() from shutdown pipe");
+      gearman_perror(universal, errno, "read() from shutdown pipe");
     }
 
 #if 0
@@ -408,14 +415,29 @@ gearman_connection_st *gearman_ready(gearman_universal_st& universal)
   return NULL;
 }
 
+void gearman_universal_st::close_wakeup()
+{
+  if (wakeup_fd[0] != INVALID_SOCKET)
+  {
+    close(wakeup_fd[0]);
+  }
+
+  if (wakeup_fd[1] != INVALID_SOCKET)
+  {
+    close(wakeup_fd[1]);
+  }
+}
+
 gearman_universal_st::~gearman_universal_st()
 {
+  close_wakeup();
+
   gearman_string_free(_identifier);
   gearman_string_free(_namespace);
-#if defined(HAVE_CYASSL) && HAVE_CYASSL
+#if defined(HAVE_SSL) && HAVE_SSL
   if (_ctx_ssl)
   {
-    CyaSSL_CTX_free(_ctx_ssl);
+    SSL_CTX_free(_ctx_ssl);
   }
 #else
   assert(_ctx_ssl == NULL);
@@ -450,33 +472,34 @@ bool gearman_universal_st::init_ssl()
 {
   if (ssl())
   {
-#if defined(HAVE_CYASSL) && HAVE_CYASSL
-    CyaSSL_Init();
+#if defined(HAVE_SSL) && HAVE_SSL
+    SSL_load_error_strings();
+    SSL_library_init();
 
-    if ((_ctx_ssl= CyaSSL_CTX_new(CyaTLSv1_client_method())) == NULL)
+    if ((_ctx_ssl= SSL_CTX_new(TLSv1_client_method())) == NULL)
     {
       gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "CyaTLSv1_client_method() failed");
       return false;
     }
 
-    if (CyaSSL_CTX_load_verify_locations(_ctx_ssl, ssl_ca_file(), 0) != SSL_SUCCESS)
+    if (SSL_CTX_load_verify_locations(_ctx_ssl, ssl_ca_file(), 0) != SSL_SUCCESS)
     {
       gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load CA certificate %s", ssl_ca_file());
       return false;
     }
 
-    if (CyaSSL_CTX_use_certificate_file(_ctx_ssl, ssl_certificate(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (SSL_CTX_use_certificate_file(_ctx_ssl, ssl_certificate(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
     {   
       gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load certificate %s", ssl_certificate());
       return false;
     }
 
-    if (CyaSSL_CTX_use_PrivateKey_file(_ctx_ssl, ssl_key(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (SSL_CTX_use_PrivateKey_file(_ctx_ssl, ssl_key(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
     {   
       gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load certificate key %s", ssl_key());
       return false;
     }
-#endif // defined(HAVE_CYASSL) && HAVE_CYASSL
+#endif // defined(HAVE_SSL) && HAVE_SSL
   }
 
   return true;

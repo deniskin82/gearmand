@@ -91,7 +91,7 @@ struct gearman_universal_st : public error_st
   gearman_allocator_t allocator;
   struct gearman_vector_st *_identifier;
   struct gearman_vector_st *_namespace;
-  struct CYASSL_CTX* _ctx_ssl;
+  SSL_CTX* _ctx_ssl;
   struct error_st _error;
   int wakeup_fd[2];
 
@@ -103,6 +103,16 @@ struct gearman_universal_st : public error_st
   void ssl(bool ssl_)
   {
     options._ssl= ssl_;
+  }
+
+  private:
+  void close_wakeup();
+
+  public:
+  bool wakeup(bool);
+  bool has_wakeup() const
+  {
+    return wakeup_fd[0] != INVALID_SOCKET;
   }
 
   bool is_non_blocking() const
@@ -230,7 +240,7 @@ private:
   bool init_ssl();
 
 public:
-  struct CYASSL_CTX* ctx_ssl() 
+  SSL_CTX* ctx_ssl() 
   {
     if (ssl())
     {
@@ -256,6 +266,9 @@ public:
   {
     return _identifier;
   }
+
+  void flush();
+  void reset();
 };
 
 static inline bool gearman_universal_is_non_blocking(gearman_universal_st &self)

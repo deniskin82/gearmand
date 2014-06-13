@@ -66,8 +66,9 @@ struct gearman_connection_st
   short revents;
 private:
   int fd;
-  struct CYASSL* _ssl;
+  SSL* _ssl;
   int cached_errno;
+
 public:
   uint32_t created_id;
   uint32_t created_id_next;
@@ -77,6 +78,7 @@ public:
   size_t recv_buffer_size;
   size_t recv_data_size;
   size_t recv_data_offset;
+
 private:
   gearman_universal_st &universal;
   gearman_connection_st *next;
@@ -84,6 +86,7 @@ private:
   void *context;
   struct addrinfo *_addrinfo;
   struct addrinfo *addrinfo_next;
+
 public:
   const char *send_buffer_ptr;
   char *recv_buffer_ptr;
@@ -115,12 +118,15 @@ public:
 
   void free_private_packet();
 
-  gearman_connection_st(gearman_universal_st &universal_arg);
+  gearman_connection_st(gearman_universal_st& universal_arg, const char*, const char*);
 
   ~gearman_connection_st();
 
-  void set_host( const char *host, const in_port_t port);
+private:
   void set_host( const char *host, const char* service);
+  void set_host( const char *host, const in_port_t port);
+
+public:
 
   const char* host(void) const
   {
@@ -136,7 +142,11 @@ public:
   size_t send_and_flush(const void *data, size_t data_size, gearman_return_t *ret_ptr);
 
   gearman_return_t enable_ssl();
+private:
+  friend void gearman_universal_st::flush();
   gearman_return_t flush();
+
+public:
   void close_socket();
 
   // Receive packet from a connection.

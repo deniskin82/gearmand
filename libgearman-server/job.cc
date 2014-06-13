@@ -344,13 +344,12 @@ gearmand_error_t gearman_server_job_queue(gearman_server_job_st *job)
     job->retries++;
     if (Server->job_retries != 0 && Server->job_retries == job->retries)
     {
-      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
-                         "Dropped job due to max retry count: %s %.*s",
-                         job->job_handle,
-                         (int)job->unique_length, job->unique);
+      gearmand_log_notice(GEARMAN_DEFAULT_LOG_PARAM,
+                          "Dropped job due to max retry count: %s %.*s",
+                          job->job_handle,
+                          (int)job->unique_length, job->unique);
 
-      gearman_server_client_st *client;
-      for (client= job->client_list; client != NULL; client= client->job_next)
+      for (gearman_server_client_st* client= job->client_list; client != NULL; client= client->job_next)
       {
         gearmand_error_t ret= gearman_server_io_packet_add(client->con, false,
                                                            GEARMAN_MAGIC_RESPONSE,
@@ -360,7 +359,7 @@ gearmand_error_t gearman_server_job_queue(gearman_server_job_st *job)
                                                            NULL);
         if (gearmand_failed(ret))
         {
-          return ret;
+          gearmand_log_gerror_warn(GEARMAN_DEFAULT_LOG_PARAM, ret, "Failed to send WORK_FAIL packet to %s:%s", client->con->host(), client->con->port());
         }
       }
 
@@ -371,9 +370,9 @@ gearmand_error_t gearman_server_job_queue(gearman_server_job_st *job)
                                                  job->unique, job->unique_length,
                                                  job->function->function_name,
                                                  job->function->function_name_size);
-        if (ret != GEARMAND_SUCCESS)
+        if (gearmand_failed(ret))
         {
-          return ret;
+          gearmand_log_gerror_warn(GEARMAN_DEFAULT_LOG_PARAM, ret, "Failed to removed %.*s from persistent queue", int(job->unique_length), job->unique);
         }
       }
 
@@ -404,12 +403,13 @@ gearmand_error_t gearman_server_job_queue(gearman_server_job_st *job)
                                                            GEARMAN_COMMAND_NOOP, NULL);
         if (gearmand_failed(ret))
         {
-          gearmand_gerror("gearman_server_io_packet_add", ret);
-          return ret;
+          gearmand_log_gerror_warn(GEARMAN_DEFAULT_LOG_PARAM, ret, "Failed to send NOOP packet to %s:%s", worker->con->host(), worker->con->port());
         }
-
-        worker->con->is_noop_sent= true;
-        noop_sent++;
+        else
+        {
+          worker->con->is_noop_sent= true;
+          noop_sent++;
+        }
       }
 
       worker= worker->function_next;

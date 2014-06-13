@@ -233,8 +233,8 @@ gearmand_error_t gearmand_thread_create(gearmand_st& gearmand)
     }
   }
 
-  gearmand_error_t ret= _wakeup_init(thread);
-  if (ret != GEARMAND_SUCCESS)
+  gearmand_error_t ret;
+  if (gearmand_failed(ret= _wakeup_init(thread)))
   {
     gearmand_thread_free(thread);
     return ret;
@@ -291,7 +291,7 @@ void gearmand_thread_free(gearmand_thread_st *thread)
         struct timespec ts;
         if (fill_timespec(ts))
         {
-          ts.tv_sec+= 30;
+          ts.tv_sec+= 300;
           pthread_error= pthread_timedjoin_np(thread->id, NULL, &ts);
           if (pthread_error)
           {

@@ -120,49 +120,53 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
 
   while (1)
   {
-#if defined(HAVE_CYASSL) && HAVE_CYASSL
+#if defined(HAVE_SSL) && HAVE_SSL
     if (con->_ssl)
     {
-      int ssl_errno;
+# if defined(HAVE_CYASSL) && HAVE_CYASSL
       read_size= CyaSSL_recv(con->_ssl, data, int(data_size), MSG_DONTWAIT);
-      ssl_errno= errno;
-      if (read_size <= 0)
+# else
+      read_size= SSL_read(con->_ssl, data, int(data_size));
+# endif
+      assert(HAVE_SSL); // Just to make sure if macro is aligned.
+      int ssl_error;
+      switch ((ssl_error= SSL_get_error(con->_ssl, int(read_size))))
       {
-        int sendErr= CyaSSL_get_error(con->_ssl, int(read_size));
-        switch (sendErr)
-        {
-          case SSL_ERROR_ZERO_RETURN:
-            {
-              read_size= 0; // Shutdown occured.
-              break;
-            }
-          case SSL_ERROR_WANT_READ:
-            {
-              read_size= -1;
-              errno= EAGAIN;
-              break;
-            }
-          case SSL_ERROR_SYSCALL:
-            { // All other errors
-              char errorString[80];
-              int err= CyaSSL_get_error(con->_ssl, 0);
-              CyaSSL_ERR_error_string(err, errorString);
-              _connection_close(connection);
-              gearmand_log_perror(GEARMAN_DEFAULT_LOG_PARAM, ssl_errno, "SSL failure(%s)", errorString);
+        case SSL_ERROR_NONE:
+          break;
 
-              return 0;
-            }
-          default:
-            { // All other errors
-              char errorString[80];
-              int err= CyaSSL_get_error(con->_ssl, 0);
-              CyaSSL_ERR_error_string(err, errorString);
-              _connection_close(connection);
-              gearmand_log_warning(GEARMAN_DEFAULT_LOG_PARAM, "SSL failure(%s) errno:%d", errorString, ssl_errno);
+        case SSL_ERROR_ZERO_RETURN:
+          read_size= 0;
+          break;
 
-              return 0;
-            }
-        }
+        case SSL_ERROR_WANT_CONNECT:
+        case SSL_ERROR_WANT_ACCEPT:
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+        case SSL_ERROR_WANT_X509_LOOKUP:
+          read_size= SOCKET_ERROR;
+          errno= EAGAIN;
+          break;
+
+        case SSL_ERROR_SYSCALL:
+
+          if (errno) // If errno is really set, then let our normal error logic handle.
+          {
+            read_size= SOCKET_ERROR;
+            break;
+          }
+
+        case SSL_ERROR_SSL:
+        default:
+          { // All other errors
+            char errorString[SSL_ERROR_SIZE];
+            ERR_error_string_n(ssl_error, errorString, sizeof(errorString));
+            ret= GEARMAND_LOST_CONNECTION;
+            gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "SSL failure(%s) errno:%d", errorString);
+            _connection_close(connection);
+
+            return 0;
+          }
       }
     }
     else
@@ -178,7 +182,7 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
       _connection_close(connection);
       return 0;
     }
-    else if (read_size == -1)
+    else if (read_size == SOCKET_ERROR)
     {
       int local_errno= errno;
       switch (local_errno)
@@ -294,38 +298,52 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
       while (connection->send_buffer_size)
       {
         ssize_t write_size;
-#if defined(HAVE_CYASSL) && HAVE_CYASSL
+#if defined(HAVE_SSL) && HAVE_SSL
         if (con->_ssl)
         {
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
           write_size= CyaSSL_send(con->_ssl, connection->send_buffer_ptr, int(connection->send_buffer_size), MSG_NOSIGNAL|MSG_DONTWAIT);
+#elif defined(HAVE_OPENSSL) && HAVE_OPENSSL
+          write_size= SSL_write(con->_ssl, connection->send_buffer_ptr, int(connection->send_buffer_size));
+#endif
+          assert(HAVE_SSL); // Just to make sure if macro is aligned.
 
-          // I consider this to be a bug in CyaSSL_send() that is uses a zero in this manner
-          if (write_size <= 0)
+          int ssl_error;
+          switch ((ssl_error= SSL_get_error(con->_ssl, int(write_size))))
           {
-            int err;
-            switch ((err= CyaSSL_get_error(con->_ssl, int(write_size))))
-            {
-              case SSL_ERROR_WANT_CONNECT:
-              case SSL_ERROR_WANT_ACCEPT:
-                write_size= -1;
-                errno= EAGAIN;
-                break;
+            case SSL_ERROR_NONE:
+              break;
 
-              case SSL_ERROR_WANT_WRITE:
-              case SSL_ERROR_WANT_READ:
-                write_size= -1;
-                errno= EAGAIN;
-                break;
+            case SSL_ERROR_ZERO_RETURN:
+              errno= ECONNRESET;
+              write_size= SOCKET_ERROR;
+              break;
 
-              default:
-                {
-                  char errorString[80];
-                  CyaSSL_ERR_error_string(err, errorString);
-                  _connection_close(connection);
-                  return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_LOST_CONNECTION, "SSL failure(%s)",
-                                             errorString);
-                }
-            }
+            case SSL_ERROR_WANT_ACCEPT:
+            case SSL_ERROR_WANT_CONNECT:
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+            case SSL_ERROR_WANT_X509_LOOKUP:
+              write_size= SOCKET_ERROR;
+              errno= EAGAIN;
+              break;
+
+            case SSL_ERROR_SYSCALL:
+              if (errno) // If errno is really set, then let our normal error logic handle.
+              {
+                write_size= SOCKET_ERROR;
+                break;
+              }
+
+            case SSL_ERROR_SSL:
+            default:
+              {
+                char errorString[SSL_ERROR_SIZE];
+                ERR_error_string_n(ssl_error, errorString, sizeof(errorString));
+                _connection_close(connection);
+                return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_LOST_CONNECTION, "SSL failure(%s)",
+                                           errorString);
+              }
           }
         }
         else
@@ -347,7 +365,7 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
           }
           continue;
         }
-        else if (write_size == -1)
+        else if (write_size == SOCKET_ERROR)
         {
           int local_errno= errno;
           switch (local_errno)
@@ -371,17 +389,15 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
           case EPIPE:
           case ECONNRESET:
           case EHOSTDOWN:
-            gearmand_perror(local_errno, "lost connection to client during send(EPIPE || ECONNRESET || EHOSTDOWN)");
             _connection_close(connection);
-            return GEARMAND_LOST_CONNECTION;
+            return gearmand_perror(local_errno, "lost connection to client during send(EPIPE || ECONNRESET || EHOSTDOWN)");
 
           default:
             break;
           }
 
-          gearmand_perror(local_errno, "send() failed, closing connection");
           _connection_close(connection);
-          return GEARMAND_ERRNO;
+          return gearmand_perror(local_errno, "send() failed, closing connection");
         }
 
         gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "send() %u bytes to peer",
@@ -713,9 +729,7 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
 }
 
 #pragma GCC diagnostic push
-#ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
-#endif
 gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
 {
   gearmand_io_st *connection= &con->con;

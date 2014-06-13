@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "GEARMAN_WORKER_REGISTER" "3" "July 29, 2013" "1.1.8" "Gearmand"
+.TH "GEARMAN_WORKER_REGISTER" "3" "October 03, 2013" "1.1.11" "Gearmand"
 .SH NAME
 gearman_worker_register \- Gearmand Documentation, http://gearman.info/
 .
@@ -120,6 +120,10 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .TP
 .B gearman_return_t gearman_worker_work(\fI\%gearman_worker_st\fP\fI\ *worker\fP)
 .UNINDENT
+.INDENT 0.0
+.TP
+.B gearman_job_st *gearman_worker_grab_job(\fI\%gearman_worker_st\fP\fI\ *worker\fP, gearman_job_st\fI\ *job\fP, gearman_return_t\fI\ *ret_ptr\fP)
+.UNINDENT
 .sp
 Link with \-lgearman
 .SH DESCRIPTION
@@ -133,6 +137,10 @@ Link with \-lgearman
 \fI\%gearman_worker_timeout()\fP and \fI\%gearman_worker_set_timeout()\fP get and set the current timeout value, in milliseconds, for the worker.
 .sp
 \fI\%gearman_worker_function_exist()\fP is used to determine if a given worker has a specific function.
+.sp
+\fI\%gearman_worker_work()\fP have the worker execute against jobs until an error occurs.
+.sp
+\fI\%gearman_worker_grab_job()\fP Takes a job from one of the job servers. It is the responsibility of the caller to free the job once they are done. This interface is used in testing, and is very rarely the correct interface to program against.
 .sp
 Normally \fImalloc(3)\fP and \fIfree(3)\fP are used for allocation and releasing workloads. \fI\%gearman_worker_set_workload_malloc_fn()\fP and \fI\%gearman_worker_set_workload_free_fn()\fP can be used to replace these with custom functions.
 .sp

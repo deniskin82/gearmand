@@ -1,6 +1,6 @@
 Summary: Gearman Server and C Library
 Name: gearmand
-Version: 1.1.9
+Version: 1.1.11
 Release: 1
 License: BSD
 Group: System Environment/Libraries
@@ -235,6 +235,7 @@ fi
 %{_mandir}/man3/gearman_job_st.3.gz
 %{_mandir}/man3/gearman_job_take_workload.3.gz
 %{_mandir}/man3/gearman_job_unique.3.gz
+%{_mandir}/man3/gearman_job_use_client.3.gz
 %{_mandir}/man3/gearman_job_workload.3.gz
 %{_mandir}/man3/gearman_job_workload_size.3.gz
 %{_mandir}/man3/gearman_log_fn.3.gz

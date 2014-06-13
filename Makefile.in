@@ -58,6 +58,10 @@
 #
 
 # vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
+
+# vim:ft=automake
 # Gearman server and library 
 # Copyright (C) 2013 Data Differential, http://datadifferential.com/
 #
@@ -472,17 +476,6 @@
 # All paths should be given relative to the root
 
 # vim:ft=automake
-# included from Top Level Makefile.am
-# All paths should be given relative to the root
-
-# Makefile for Sphinx documentation
-#
-
-# vim:ft=automake
-# included from Top Level Makefile.am
-# All paths should be given relative to the root
-
-# vim:ft=automake
 # Gearman server and library 
 # Copyright (C) 2012 DataDifferential 
 #
@@ -593,6 +586,10 @@ noinst_PROGRAMS = t/unittest$(EXEEXT) t/skip$(EXEEXT) \
 	libhostile/t/hostile_pipe2$(EXEEXT) \
 	libhostile/t/close$(EXEEXT) \
 	libhostile/t/hostile_close$(EXEEXT) \
+	docs/libgearman/examples/gearman_client_do_background_example$(EXEEXT) \
+	docs/libgearman/examples/gearman_client_do_example$(EXEEXT) \
+	docs/libgearman/examples/gearman_execute_example$(EXEEXT) \
+	docs/libgearman/examples/gearman_execute_partition$(EXEEXT) \
 	benchmark/blobslap_client$(EXEEXT) \
 	benchmark/blobslap_worker$(EXEEXT) \
 	examples/echo_client$(EXEEXT) examples/echo_worker$(EXEEXT) \
@@ -613,15 +610,11 @@ noinst_PROGRAMS = t/unittest$(EXEEXT) t/skip$(EXEEXT) \
 	t/c$(EXEEXT) t/ephemeral$(EXEEXT) t/drizzle$(EXEEXT) \
 	t/memcached$(EXEEXT) t/postgres$(EXEEXT) t/mysql$(EXEEXT) \
 	$(am__EXEEXT_1) t/tokyocabinet$(EXEEXT) t/redis$(EXEEXT) \
-	t/httpd$(EXEEXT) \
-	docs/libgearman/examples/gearman_client_do_background_example$(EXEEXT) \
-	docs/libgearman/examples/gearman_client_do_example$(EXEEXT) \
-	docs/libgearman/examples/gearman_execute_example$(EXEEXT) \
-	docs/libgearman/examples/gearman_execute_partition$(EXEEXT)
+	t/httpd$(EXEEXT)
 DIST_COMMON = $(srcdir)/libtest/include.am \
 	$(srcdir)/libhostile/include.am \
 	$(srcdir)/libhostile/t/include.am \
-	$(srcdir)/libhashkit-1.0/include.am \
+	$(srcdir)/libhashkit-1.0/include.am $(srcdir)/docs/examples.mk \
 	$(srcdir)/libgearmancore/include.am \
 	$(srcdir)/libhashkit/include.am $(srcdir)/benchmark/include.am \
 	$(srcdir)/bin/include.am $(srcdir)/examples/include.am \
@@ -654,8 +647,7 @@ DIST_COMMON = $(srcdir)/libtest/include.am \
 	$(srcdir)/tests/mysql.am $(srcdir)/tests/sqlite.am \
 	$(srcdir)/tests/tokyocabinet.am $(srcdir)/tests/redis.am \
 	$(srcdir)/tests/httpd.am $(srcdir)/tests/perl/include.am \
-	$(srcdir)/support/include.am $(srcdir)/docs/include.am \
-	$(srcdir)/man/include.am $(srcdir)/m4/include.am \
+	$(srcdir)/support/include.am $(srcdir)/m4/include.am \
 	$(srcdir)/rpm.am $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure $(am__configure_deps) \
 	$(srcdir)/gear_config.in \
@@ -671,19 +663,22 @@ DIST_COMMON = $(srcdir)/libtest/include.am \
 	$(top_srcdir)/scripts/smf_install.sh.in \
 	$(top_srcdir)/support/gearmand.pc.in \
 	$(top_srcdir)/support/gearmand.spec.in \
-	$(top_srcdir)/build-aux/depcomp $(dist_man_MANS) \
-	$(nobase_include_HEADERS) $(noinst_HEADERS) \
-	$(top_srcdir)/build-aux/test-driver AUTHORS COPYING ChangeLog \
-	NEWS README THANKS build-aux/config.guess build-aux/config.sub \
-	build-aux/depcomp build-aux/install-sh build-aux/missing \
-	build-aux/ltmain.sh $(top_srcdir)/build-aux/config.guess \
+	$(top_srcdir)/build-aux/depcomp $(nobase_include_HEADERS) \
+	$(noinst_HEADERS) AUTHORS COPYING ChangeLog NEWS README THANKS \
+	build-aux/config.guess build-aux/config.sub build-aux/depcomp \
+	build-aux/install-sh build-aux/missing build-aux/ltmain.sh \
+	$(top_srcdir)/build-aux/config.guess \
 	$(top_srcdir)/build-aux/config.sub \
 	$(top_srcdir)/build-aux/install-sh \
 	$(top_srcdir)/build-aux/ltmain.sh \
 	$(top_srcdir)/build-aux/missing
-@BUILDING_GEARMAN_TRUE@am__append_1 = libtest/blobslap_worker.cc
-@TARGET_HOSTILE_TRUE@am__append_2 = @DL_LIB@ @RT_LIB@ @PTHREAD_LIBS@
-@TARGET_HOSTILE_TRUE@am__append_3 = libhostile/accept.c \
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_1 = @CYASSL_LIB@
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_2 = @CYASSL_LDFLAGS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_3 = @OPENSSL_LIBS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_4 = @OPENSSL_LDFLAGS@
+@BUILDING_GEARMAN_TRUE@am__append_5 = libtest/blobslap_worker.cc
+@TARGET_HOSTILE_TRUE@am__append_6 = @DL_LIB@ @RT_LIB@ @PTHREAD_LIBS@
+@TARGET_HOSTILE_TRUE@am__append_7 = libhostile/accept.c \
 @TARGET_HOSTILE_TRUE@	libhostile/called.c libhostile/close.c \
 @TARGET_HOSTILE_TRUE@	libhostile/connect.c \
 @TARGET_HOSTILE_TRUE@	libhostile/function.c \
@@ -695,36 +690,48 @@ DIST_COMMON = $(srcdir)/libtest/include.am \
 @TARGET_HOSTILE_TRUE@	libhostile/socket_server.c \
 @TARGET_HOSTILE_TRUE@	libhostile/setsockopt.c \
 @TARGET_HOSTILE_TRUE@	libhostile/write.c
-@TARGET_HOSTILE_FALSE@am__append_4 = libhostile/dummy.c
-@INCLUDE_HSIEH_SRC_TRUE@am__append_5 = libhashkit/hsieh.cc
-@INCLUDE_HSIEH_SRC_FALSE@am__append_6 = libhashkit/nohsieh.cc
-@TARGET_HOSTILE_TRUE@am__append_7 = libhostile/libhostile.la
-@HAVE_LIBMEMCACHED_TRUE@am__append_8 = libgearman-server/plugins/queue/libmemcached/queue.cc
-@HAVE_LIBMEMCACHED_TRUE@am__append_9 = $(LIBMEMCACHED_CFLAGS)
-@HAVE_LIBMEMCACHED_TRUE@am__append_10 = $(LIBMEMCACHED_LIB)
-@HAVE_LIBMEMCACHED_TRUE@am__append_11 = $(LIBMEMCACHED_LIB)
-@HAVE_LIBPQ_TRUE@am__append_12 = libgearman-server/plugins/queue/postgres/queue.cc
-@HAVE_LIBPQ_TRUE@am__append_13 = $(POSTGRESQL_LDFLAGS)
-@HAVE_LIBPQ_TRUE@am__append_14 = $(POSTGRESQL_CFLAGS)
-@HAVE_LIBPQ_TRUE@am__append_15 = $(POSTGRESQL_LDFLAGS)
-@HAVE_LIBSQLITE3_TRUE@am__append_16 = libgearman-server/plugins/queue/sqlite/queue.cc \
+@TARGET_HOSTILE_FALSE@am__append_8 = libhostile/dummy.c
+@INCLUDE_HSIEH_SRC_TRUE@am__append_9 = libhashkit/hsieh.cc
+@INCLUDE_HSIEH_SRC_FALSE@am__append_10 = libhashkit/nohsieh.cc
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_11 = @CYASSL_LIB@
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_12 = @CYASSL_LDFLAGS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_13 = @OPENSSL_LIBS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_14 = @OPENSSL_LDFLAGS@
+@TARGET_HOSTILE_TRUE@am__append_15 = libhostile/libhostile.la
+@HAVE_LIBMEMCACHED_TRUE@am__append_16 = libgearman-server/plugins/queue/libmemcached/queue.cc
+@HAVE_LIBMEMCACHED_TRUE@am__append_17 = $(LIBMEMCACHED_CFLAGS)
+@HAVE_LIBMEMCACHED_TRUE@am__append_18 = $(LIBMEMCACHED_LIB)
+@HAVE_LIBMEMCACHED_TRUE@am__append_19 = $(LIBMEMCACHED_LIB)
+@HAVE_LIBPQ_TRUE@am__append_20 = libgearman-server/plugins/queue/postgres/queue.cc
+@HAVE_LIBPQ_TRUE@am__append_21 = $(POSTGRESQL_LDFLAGS)
+@HAVE_LIBPQ_TRUE@am__append_22 = $(POSTGRESQL_CFLAGS)
+@HAVE_LIBPQ_TRUE@am__append_23 = $(POSTGRESQL_LDFLAGS)
+@HAVE_LIBSQLITE3_TRUE@am__append_24 = libgearman-server/plugins/queue/sqlite/queue.cc \
 @HAVE_LIBSQLITE3_TRUE@	libgearman-server/plugins/queue/sqlite/instance.cc
-@HAVE_LIBSQLITE3_TRUE@am__append_17 = @SQLITE3_CFLAGS@
-@HAVE_LIBSQLITE3_TRUE@am__append_18 = @SQLITE3_CFLAGS@
-@HAVE_LIBSQLITE3_TRUE@am__append_19 = @SQLITE3_LDFLAGS@
-@HAVE_TOKYOCABINET_TRUE@am__append_20 = libgearman-server/plugins/queue/tokyocabinet/queue.cc
-@HAVE_TOKYOCABINET_TRUE@am__append_21 = @TOKYOCABINET_LIB@
-@HAVE_LIBMYSQL_TRUE@am__append_22 = libgearman-server/plugins/queue/mysql/queue.cc
-@HAVE_LIBMYSQL_TRUE@am__append_23 = @MYSQL_INCLUDE@
-@HAVE_LIBMYSQL_TRUE@am__append_24 = @MYSQL_INCLUDE@
-@HAVE_LIBMYSQL_TRUE@am__append_25 = @MYSQL_LDFLAGS@
-@HOST_LINUX_TRUE@am__append_26 = @LIBM@
-@HOST_LINUX_TRUE@am__append_27 = @DL_LIB@ @RT_LIB@
-@HOST_LINUX_TRUE@am__append_28 = @DL_LIB@ @RT_LIB@
-@HAVE_LIBMEMCACHED_TRUE@am__append_29 = $(LIBMEMCACHED_CFLAGS)
-@HAVE_LIBMEMCACHED_TRUE@am__append_30 = $(LIBMEMCACHED_UTIL_LIB)
-@HAVE_LIBSQLITE3_TRUE@am__append_31 = t/sqlite
-@HAVE_LIBSQLITE3_TRUE@am__append_32 = t/sqlite
+@HAVE_LIBSQLITE3_TRUE@am__append_25 = @SQLITE3_CFLAGS@
+@HAVE_LIBSQLITE3_TRUE@am__append_26 = @SQLITE3_CFLAGS@
+@HAVE_LIBSQLITE3_TRUE@am__append_27 = @SQLITE3_LDFLAGS@
+@HAVE_TOKYOCABINET_TRUE@am__append_28 = libgearman-server/plugins/queue/tokyocabinet/queue.cc
+@HAVE_TOKYOCABINET_TRUE@am__append_29 = @TOKYOCABINET_LIB@
+@HAVE_LIBMYSQL_TRUE@am__append_30 = libgearman-server/plugins/queue/mysql/queue.cc
+@HAVE_LIBMYSQL_TRUE@am__append_31 = @MYSQL_INCLUDE@
+@HAVE_LIBMYSQL_TRUE@am__append_32 = @MYSQL_INCLUDE@
+@HAVE_LIBMYSQL_TRUE@am__append_33 = @MYSQL_LDFLAGS@
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_34 = @CYASSL_LIB@
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_35 = @CYASSL_LDFLAGS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_36 = @OPENSSL_LIBS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_37 = @OPENSSL_LDFLAGS@
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_38 = @CYASSL_LIB@
+@ENABLE_CYASSL_TRUE@@ENABLE_SSL_TRUE@am__append_39 = @CYASSL_LDFLAGS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_40 = @OPENSSL_LIBS@
+@ENABLE_CYASSL_FALSE@@ENABLE_OPENSSL_TRUE@@ENABLE_SSL_TRUE@am__append_41 = @OPENSSL_LDFLAGS@
+@HOST_LINUX_TRUE@am__append_42 = @LIBM@
+@HOST_LINUX_TRUE@am__append_43 = @DL_LIB@ @RT_LIB@
+@HOST_LINUX_TRUE@am__append_44 = @DL_LIB@ @RT_LIB@
+@HAVE_LIBMEMCACHED_TRUE@am__append_45 = $(LIBMEMCACHED_CFLAGS)
+@HAVE_LIBMEMCACHED_TRUE@am__append_46 = $(LIBMEMCACHED_UTIL_LIB)
+@HAVE_LIBSQLITE3_TRUE@am__append_47 = t/sqlite
+@HAVE_LIBSQLITE3_TRUE@am__append_48 = t/sqlite
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
@@ -736,8 +743,10 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/m4/ax_append_to_file.m4 \
 	$(top_srcdir)/m4/ax_assert.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_cyassl.m4 \
 	$(top_srcdir)/m4/ax_check_library.m4 \
 	$(top_srcdir)/m4/ax_check_link_flag.m4 \
+	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_compare_version.m4 \
 	$(top_srcdir)/m4/ax_compiler_vendor.m4 \
 	$(top_srcdir)/m4/ax_compiler_version.m4 \
@@ -823,9 +832,8 @@ am__uninstall_files_from_dir = { \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
-	"$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man1dir)" \
-	"$(DESTDIR)$(man3dir)" "$(DESTDIR)$(man8dir)" \
-	"$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(includedir)"
+	"$(DESTDIR)$(sbindir)" "$(DESTDIR)$(pkgconfigdir)" \
+	"$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES) $(noinst_LTLIBRARIES)
 benchmark_libbenchmark_la_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
@@ -841,6 +849,7 @@ am__DEPENDENCIES_1 =
 @HAVE_LIBPQ_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 libgearman_server_libgearman_server_la_DEPENDENCIES =  \
 	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
 am__libgearman_server_libgearman_server_la_SOURCES_DIST =  \
@@ -923,7 +932,8 @@ libgearman_server_libgearman_server_la_LINK = $(LIBTOOL) $(AM_V_lt) \
 	$(CXXLD) $(libgearman_server_libgearman_server_la_CXXFLAGS) \
 	$(CXXFLAGS) $(libgearman_server_libgearman_server_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
-am__DEPENDENCIES_4 = libhashkit/libhashkit.la $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	libhashkit/libhashkit.la $(am__DEPENDENCIES_1)
 libgearman_libgearman_hostile_la_DEPENDENCIES = $(am__DEPENDENCIES_4)
 am__objects_6 = libgearman/libgearman_libgearman_hostile_la-check.lo \
 	libgearman/libgearman_libgearman_hostile_la-actions.lo \
@@ -996,7 +1006,8 @@ libgearman_libgearman_vector_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(libgearman_libgearman_vector_la_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-libgearman_libgearman_la_DEPENDENCIES = libhashkit/libhashkit.la \
+libgearman_libgearman_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) libhashkit/libhashkit.la \
 	$(am__DEPENDENCIES_1)
 am_libgearman_libgearman_la_OBJECTS =  \
 	libgearman/libgearman_libgearman_la-check.lo \
@@ -1061,6 +1072,7 @@ am_libgearman_libgearmancore_la_OBJECTS =  \
 	libgearman/libgearman_libgearmancore_la-kill.lo \
 	libgearman/libgearman_libgearmancore_la-log.lo \
 	libgearman/libgearman_libgearmancore_la-packet.lo \
+	libgearman/libgearman_libgearmancore_la-pipe.lo \
 	libgearman/protocol/libgearman_libgearmancore_la-echo.lo \
 	libgearman/protocol/libgearman_libgearmancore_la-option.lo \
 	libgearman/protocol/libgearman_libgearmancore_la-submit.lo \
@@ -1199,7 +1211,8 @@ libhostile_libhostile_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(libhostile_libhostile_la_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-libtest_libtest_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+libtest_libtest_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__libtest_libtest_la_SOURCES_DIST = libtest/alarm.cc \
 	libtest/binaries.cc libtest/cmdline.cc libtest/collection.cc \
 	libtest/comparison.cc libtest/core.cc libtest/cpu.cc \
@@ -1268,6 +1281,7 @@ am_tests_libstartworker_la_OBJECTS =  \
 	tests/workers/v1/tests_libstartworker_la-unique.lo \
 	tests/workers/v2/tests_libstartworker_la-call_exception.lo \
 	tests/workers/v2/tests_libstartworker_la-called.lo \
+	tests/workers/v2/tests_libstartworker_la-client_echo.lo \
 	tests/workers/v2/tests_libstartworker_la-count.lo \
 	tests/workers/v2/tests_libstartworker_la-echo_or_react.lo \
 	tests/workers/v2/tests_libstartworker_la-echo_or_react_chunk.lo \
@@ -1308,7 +1322,8 @@ am_bin_gearadmin_OBJECTS = bin/bin_gearadmin-gearadmin.$(OBJEXT) \
 	util/bin_gearadmin-instance.$(OBJEXT) \
 	util/bin_gearadmin-operation.$(OBJEXT)
 bin_gearadmin_OBJECTS = $(am_bin_gearadmin_OBJECTS)
-bin_gearadmin_DEPENDENCIES = $(am__DEPENDENCIES_1)
+bin_gearadmin_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 bin_gearadmin_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(bin_gearadmin_CXXFLAGS) $(CXXFLAGS) $(bin_gearadmin_LDFLAGS) \
@@ -1426,7 +1441,7 @@ am_gearmand_hostile_gearmand_OBJECTS = $(am__objects_15)
 gearmand_hostile_gearmand_OBJECTS =  \
 	$(am_gearmand_hostile_gearmand_OBJECTS)
 gearmand_hostile_gearmand_DEPENDENCIES =  \
-	libgearman-server/libgearman-server.la $(am__append_7)
+	libgearman-server/libgearman-server.la $(am__append_15)
 gearmand_hostile_gearmand_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(gearmand_hostile_gearmand_CXXFLAGS) $(CXXFLAGS) \
@@ -1839,18 +1854,29 @@ DIST_SOURCES = $(benchmark_libbenchmark_la_SOURCES) \
 	$(am__t_sqlite_SOURCES_DIST) $(t_stress_SOURCES) \
 	$(t_tokyocabinet_SOURCES) $(t_unittest_SOURCES) \
 	$(t_vector_SOURCES) $(t_worker_SOURCES)
+RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
+	ctags-recursive dvi-recursive html-recursive info-recursive \
+	install-data-recursive install-dvi-recursive \
+	install-exec-recursive install-html-recursive \
+	install-info-recursive install-pdf-recursive \
+	install-ps-recursive install-recursive installcheck-recursive \
+	installdirs-recursive pdf-recursive ps-recursive \
+	tags-recursive uninstall-recursive
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-man1dir = $(mandir)/man1
-man3dir = $(mandir)/man3
-man8dir = $(mandir)/man8
-NROFF = nroff
-MANS = $(dist_man_MANS) $(man1_MANS) $(man3_MANS) $(man8_MANS) $(man_MANS)
 DATA = $(pkgconfig_DATA)
 HEADERS = $(nobase_include_HEADERS) $(noinst_HEADERS)
+RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
+  distclean-recursive maintainer-clean-recursive
+am__recursive_targets = \
+  $(RECURSIVE_TARGETS) \
+  $(RECURSIVE_CLEAN_TARGETS) \
+  $(am__extra_recursive_targets)
+AM_RECURSIVE_TARGETS = $(am__recursive_targets:-recursive=) TAGS CTAGS \
+	cscope distdir dist dist-all distcheck
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) \
 	$(LISP)gear_config.in
 # Read a list of newline-separated strings from the standard input,
@@ -1872,7 +1898,6 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 CSCOPE = cscope
-AM_RECURSIVE_TARGETS = cscope check recheck
 am__tty_colors_dummy = \
   mgn= red= grn= lgn= blu= brg= std=; \
   am__color_tests=no
@@ -1895,160 +1920,7 @@ am__tty_colors = { \
     std='[m'; \
   fi; \
 }
-am__recheck_rx = ^[ 	]*:recheck:[ 	]*
-am__global_test_result_rx = ^[ 	]*:global-test-result:[ 	]*
-am__copy_in_global_log_rx = ^[ 	]*:copy-in-global-log:[ 	]*
-# A command that, given a newline-separated list of test names on the
-# standard input, print the name of the tests that are to be re-run
-# upon "make recheck".
-am__list_recheck_tests = $(AWK) '{ \
-  recheck = 1; \
-  while ((rc = (getline line < ($$0 ".trs"))) != 0) \
-    { \
-      if (rc < 0) \
-        { \
-          if ((getline line2 < ($$0 ".log")) < 0) \
-	    recheck = 0; \
-          break; \
-        } \
-      else if (line ~ /$(am__recheck_rx)[nN][Oo]/) \
-        { \
-          recheck = 0; \
-          break; \
-        } \
-      else if (line ~ /$(am__recheck_rx)[yY][eE][sS]/) \
-        { \
-          break; \
-        } \
-    }; \
-  if (recheck) \
-    print $$0; \
-  close ($$0 ".trs"); \
-  close ($$0 ".log"); \
-}'
-# A command that, given a newline-separated list of test names on the
-# standard input, create the global log from their .trs and .log files.
-am__create_global_log = $(AWK) ' \
-function fatal(msg) \
-{ \
-  print "fatal: making $@: " msg | "cat >&2"; \
-  exit 1; \
-} \
-function rst_section(header) \
-{ \
-  print header; \
-  len = length(header); \
-  for (i = 1; i <= len; i = i + 1) \
-    printf "="; \
-  printf "\n\n"; \
-} \
-{ \
-  copy_in_global_log = 1; \
-  global_test_result = "RUN"; \
-  while ((rc = (getline line < ($$0 ".trs"))) != 0) \
-    { \
-      if (rc < 0) \
-         fatal("failed to read from " $$0 ".trs"); \
-      if (line ~ /$(am__global_test_result_rx)/) \
-        { \
-          sub("$(am__global_test_result_rx)", "", line); \
-          sub("[ 	]*$$", "", line); \
-          global_test_result = line; \
-        } \
-      else if (line ~ /$(am__copy_in_global_log_rx)[nN][oO]/) \
-        copy_in_global_log = 0; \
-    }; \
-  if (copy_in_global_log) \
-    { \
-      rst_section(global_test_result ": " $$0); \
-      while ((rc = (getline line < ($$0 ".log"))) != 0) \
-      { \
-        if (rc < 0) \
-          fatal("failed to read from " $$0 ".log"); \
-        print line; \
-      }; \
-      printf "\n"; \
-    }; \
-  close ($$0 ".trs"); \
-  close ($$0 ".log"); \
-}'
-# Restructured Text title.
-am__rst_title = { sed 's/.*/   &   /;h;s/./=/g;p;x;s/ *$$//;p;g' && echo; }
-# Solaris 10 'make', and several other traditional 'make' implementations,
-# pass "-e" to $(SHELL), and POSIX 2008 even requires this.  Work around it
-# by disabling -e (using the XSI extension "set +e") if it's set.
-am__sh_e_setup = case $$- in *e*) set +e;; esac
-# Default flags passed to test drivers.
-am__common_driver_flags = \
-  --color-tests "$$am__color_tests" \
-  --enable-hard-errors "$$am__enable_hard_errors" \
-  --expect-failure "$$am__expect_failure"
-# To be inserted before the command running the test.  Creates the
-# directory for the log if needed.  Stores in $dir the directory
-# containing $f, in $tst the test, in $log the log.  Executes the
-# developer- defined test setup AM_TESTS_ENVIRONMENT (if any), and
-# passes TESTS_ENVIRONMENT.  Set up options for the wrapper that
-# will run the test scripts (or their associated LOG_COMPILER, if
-# thy have one).
-am__check_pre = \
-$(am__sh_e_setup);					\
-$(am__vpath_adj_setup) $(am__vpath_adj)			\
-$(am__tty_colors);					\
-srcdir=$(srcdir); export srcdir;			\
-case "$@" in						\
-  */*) am__odir=`echo "./$@" | sed 's|/[^/]*$$||'`;;	\
-    *) am__odir=.;; 					\
-esac;							\
-test "x$$am__odir" = x"." || test -d "$$am__odir" 	\
-  || $(MKDIR_P) "$$am__odir" || exit $$?;		\
-if test -f "./$$f"; then dir=./;			\
-elif test -f "$$f"; then dir=;				\
-else dir="$(srcdir)/"; fi;				\
-tst=$$dir$$f; log='$@'; 				\
-if test -n '$(DISABLE_HARD_ERRORS)'; then		\
-  am__enable_hard_errors=no; 				\
-else							\
-  am__enable_hard_errors=yes; 				\
-fi; 							\
-case " $(XFAIL_TESTS) " in				\
-  *[\ \	]$$f[\ \	]* | *[\ \	]$$dir$$f[\ \	]*) \
-    am__expect_failure=yes;;				\
-  *)							\
-    am__expect_failure=no;;				\
-esac; 							\
-$(AM_TESTS_ENVIRONMENT) $(TESTS_ENVIRONMENT)
-# A shell command to get the names of the tests scripts with any registered
-# extension removed (i.e., equivalently, the names of the test logs, with
-# the '.log' extension removed).  The result is saved in the shell variable
-# '$bases'.  This honors runtime overriding of TESTS and TEST_LOGS.  Sadly,
-# we cannot use something simpler, involving e.g., "$(TEST_LOGS:.log=)",
-# since that might cause problem with VPATH rewrites for suffix-less tests.
-# See also 'test-harness-vpath-rewrite.sh' and 'test-trs-basic.sh'.
-am__set_TESTS_bases = \
-  bases='$(TEST_LOGS)'; \
-  bases=`for i in $$bases; do echo $$i; done | sed 's/\.log$$//'`; \
-  bases=`echo $$bases`
-RECHECK_LOGS = $(TEST_LOGS)
-TEST_SUITE_LOG = test-suite.log
-TEST_EXTENSIONS = @EXEEXT@ .test
-LOG_DRIVER = $(SHELL) $(top_srcdir)/build-aux/test-driver
-LOG_COMPILE = $(LOG_COMPILER) $(AM_LOG_FLAGS) $(LOG_FLAGS)
-am__set_b = \
-  case '$@' in \
-    */*) \
-      case '$*' in \
-        */*) b='$*';; \
-          *) b=`echo '$@' | sed 's/\.log$$//'`; \
-       esac;; \
-    *) \
-      b='$*';; \
-  esac
-am__test_logs1 = $(TESTS:=.log)
-am__test_logs2 = $(am__test_logs1:@EXEEXT@.log=.log)
-TEST_LOGS = $(am__test_logs2:.test.log=.log)
-TEST_LOG_DRIVER = $(SHELL) $(top_srcdir)/build-aux/test-driver
-TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
-	$(TEST_LOG_FLAGS)
+DIST_SUBDIRS = $(SUBDIRS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -2059,6 +1931,31 @@ am__remove_distdir = \
       || { sleep 5 && rm -rf "$(distdir)"; }; \
   else :; fi
 am__post_remove_distdir = $(am__remove_distdir)
+am__relativize = \
+  dir0=`pwd`; \
+  sed_first='s,^\([^/]*\)/.*$$,\1,'; \
+  sed_rest='s,^[^/]*/*,,'; \
+  sed_last='s,^.*/\([^/]*\)$$,\1,'; \
+  sed_butlast='s,/*[^/]*$$,,'; \
+  while test -n "$$dir1"; do \
+    first=`echo "$$dir1" | sed -e "$$sed_first"`; \
+    if test "$$first" != "."; then \
+      if test "$$first" = ".."; then \
+        dir2=`echo "$$dir0" | sed -e "$$sed_last"`/"$$dir2"; \
+        dir0=`echo "$$dir0" | sed -e "$$sed_butlast"`; \
+      else \
+        first2=`echo "$$dir2" | sed -e "$$sed_first"`; \
+        if test "$$first2" = "$$first"; then \
+          dir2=`echo "$$dir2" | sed -e "$$sed_rest"`; \
+        else \
+          dir2="../$$dir2"; \
+        fi; \
+        dir0="$$dir0"/"$$first"; \
+      fi; \
+    fi; \
+    dir1=`echo "$$dir1" | sed -e "$$sed_rest"`; \
+  done; \
+  reldir="$$dir2"
 DIST_ARCHIVES = $(distdir).tar.gz
 GZIP_ENV = --best
 DIST_TARGETS = dist-gzip
@@ -2178,6 +2075,9 @@ NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPENSSL = @OPENSSL@
+OPENSSL_INCLUDES = @OPENSSL_INCLUDES@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
+OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -2190,6 +2090,7 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
 PG_CONFIG = @PG_CONFIG@
+PKG_CONFIG = @PKG_CONFIG@
 POSTGRESQL_CFLAGS = @POSTGRESQL_CFLAGS@
 POSTGRESQL_LDFLAGS = @POSTGRESQL_LDFLAGS@
 POSTGRESQL_VERSION = @POSTGRESQL_VERSION@
@@ -2438,15 +2339,12 @@ noinst_HEADERS = libtest/client.hpp libtest/formatter.hpp \
 	tests/workers/v1/echo_or_react_chunk.h \
 	tests/workers/v1/increment_reset.h tests/workers/v1/unique.h \
 	tests/workers/v2/call_exception.h tests/workers/v2/called.h \
-	tests/workers/v2/check_order.h tests/workers/v2/count.h \
-	tests/workers/v2/echo_or_react.h \
+	tests/workers/v2/check_order.h tests/workers/v2/client_echo.h \
+	tests/workers/v2/count.h tests/workers/v2/echo_or_react.h \
 	tests/workers/v2/echo_or_react_chunk.h \
 	tests/workers/v2/increment_reset.h \
 	tests/workers/v2/sleep_return_random.h \
 	tests/workers/v2/split.h tests/workers/v2/unique.h
-man1_MANS = 
-man3_MANS = 
-man8_MANS = 
 DISTCLEANFILES = aminclude.am config/top.h
 MAINTAINERCLEANFILES = libgearman/error_code.hpp
 EXTRA_DIST = libtest/run.gdb libtest/version.h \
@@ -2463,111 +2361,7 @@ BUILT_SOURCES = libtest/version.h libhashkit-1.0/configure.h \
 # Should always be first
 TESTS = $(bin_PROGRAMS) $(check_PROGRAMS)
 XFAIL_TESTS = $(bin_PROGRAMS)
-.PHONY = 
-dist_man_MANS = man/gearadmin.1 man/gearman.1 man/gearmand.8 \
-	man/gearman_allocator_t.3 \
-	man/gearman_client_set_memory_allocators.3 \
-	man/gearman_worker_set_memory_allocators.3 \
-	man/gearman_actions_t.3 man/gearman_argument_make.3 \
-	man/gearman_argument_t.3 man/gearman_bugreport.3 \
-	man/gearman_client_add_options.3 \
-	man/gearman_client_add_server.3 \
-	man/gearman_client_add_servers.3 man/gearman_client_add_task.3 \
-	man/gearman_client_add_task_background.3 \
-	man/gearman_client_add_task_high.3 \
-	man/gearman_client_add_task_high_background.3 \
-	man/gearman_client_add_task_low.3 \
-	man/gearman_client_add_task_low_background.3 \
-	man/gearman_client_add_task_status.3 \
-	man/gearman_client_clear_fn.3 man/gearman_client_clone.3 \
-	man/gearman_client_context.3 man/gearman_client_create.3 \
-	man/gearman_client_do.3 man/gearman_client_do_background.3 \
-	man/gearman_client_do_high.3 \
-	man/gearman_client_do_high_background.3 \
-	man/gearman_client_do_job_handle.3 man/gearman_client_do_low.3 \
-	man/gearman_client_do_low_background.3 \
-	man/gearman_client_do_status.3 man/gearman_client_echo.3 \
-	man/gearman_client_errno.3 man/gearman_client_error.3 \
-	man/gearman_client_free.3 man/gearman_client_job_status.3 \
-	man/gearman_client_options.3 \
-	man/gearman_client_remove_options.3 \
-	man/gearman_client_remove_servers.3 \
-	man/gearman_client_run_tasks.3 \
-	man/gearman_client_set_complete_fn.3 \
-	man/gearman_client_set_context.3 \
-	man/gearman_client_set_created_fn.3 \
-	man/gearman_client_set_data_fn.3 \
-	man/gearman_client_set_exception_fn.3 \
-	man/gearman_client_set_fail_fn.3 \
-	man/gearman_client_set_log_fn.3 \
-	man/gearman_client_set_namespace.3 \
-	man/gearman_client_set_options.3 \
-	man/gearman_client_set_status_fn.3 \
-	man/gearman_client_set_task_context_free_fn.3 \
-	man/gearman_client_set_timeout.3 \
-	man/gearman_client_set_warning_fn.3 \
-	man/gearman_client_set_workload_fn.3 \
-	man/gearman_client_set_workload_free_fn.3 \
-	man/gearman_client_set_workload_malloc_fn.3 \
-	man/gearman_client_st.3 man/gearman_client_task_free_all.3 \
-	man/gearman_client_timeout.3 man/gearman_client_wait.3 \
-	man/gearman_continue.3 man/gearman_execute.3 \
-	man/gearman_failed.3 man/gearman_job_free.3 \
-	man/gearman_job_free_all.3 man/gearman_job_function_name.3 \
-	man/gearman_job_handle.3 man/gearman_job_handle_t.3 \
-	man/gearman_job_send_complete.3 man/gearman_job_send_data.3 \
-	man/gearman_job_send_exception.3 man/gearman_job_send_fail.3 \
-	man/gearman_job_send_status.3 man/gearman_job_send_warning.3 \
-	man/gearman_job_st.3 man/gearman_job_take_workload.3 \
-	man/gearman_job_unique.3 man/gearman_job_workload.3 \
-	man/gearman_job_workload_size.3 man/gearman_log_fn.3 \
-	man/gearman_parse_servers.3 man/gearman_result_boolean.3 \
-	man/gearman_result_integer.3 man/gearman_result_is_null.3 \
-	man/gearman_result_size.3 man/gearman_result_store_integer.3 \
-	man/gearman_result_store_string.3 \
-	man/gearman_result_store_value.3 man/gearman_result_string.3 \
-	man/gearman_return_t.3 man/gearman_strerror.3 \
-	man/gearman_string_t.3 man/gearman_success.3 \
-	man/gearman_task_context.3 man/gearman_task_data.3 \
-	man/gearman_task_data_size.3 man/gearman_task_denominator.3 \
-	man/gearman_task_error.3 man/gearman_task_free.3 \
-	man/gearman_task_function_name.3 \
-	man/gearman_task_give_workload.3 man/gearman_task_is_known.3 \
-	man/gearman_task_is_running.3 man/gearman_task_job_handle.3 \
-	man/gearman_task_numerator.3 man/gearman_task_recv_data.3 \
-	man/gearman_task_return.3 man/gearman_task_send_workload.3 \
-	man/gearman_task_set_context.3 man/gearman_task_st.3 \
-	man/gearman_task_take_data.3 man/gearman_task_unique.3 \
-	man/gearman_verbose_name.3 man/gearman_verbose_t.3 \
-	man/gearman_version.3 man/gearman_worker_add_function.3 \
-	man/gearman_worker_add_options.3 \
-	man/gearman_worker_add_server.3 \
-	man/gearman_worker_add_servers.3 man/gearman_worker_clone.3 \
-	man/gearman_worker_context.3 man/gearman_worker_create.3 \
-	man/gearman_worker_define_function.3 man/gearman_worker_echo.3 \
-	man/gearman_worker_errno.3 man/gearman_worker_error.3 \
-	man/gearman_worker_free.3 man/gearman_worker_function_exist.3 \
-	man/gearman_worker_grab_job.3 man/gearman_worker_options.3 \
-	man/gearman_worker_register.3 \
-	man/gearman_worker_remove_options.3 \
-	man/gearman_worker_remove_servers.3 \
-	man/gearman_worker_set_context.3 \
-	man/gearman_worker_set_log_fn.3 \
-	man/gearman_worker_set_namespace.3 \
-	man/gearman_worker_set_options.3 \
-	man/gearman_worker_set_timeout.3 \
-	man/gearman_client_has_option.3 man/gearman_client_options_t.3 \
-	man/gearman_task_attr_init.3 \
-	man/gearman_task_attr_init_background.3 \
-	man/gearman_task_attr_init_epoch.3 man/gearman_task_attr_t.3 \
-	man/gearman_worker_set_identifier.3 \
-	man/gearman_worker_set_workload_free_fn.3 \
-	man/gearman_worker_set_workload_malloc_fn.3 \
-	man/gearman_worker_st.3 man/gearman_worker_timeout.3 \
-	man/gearman_worker_unregister.3 \
-	man/gearman_worker_unregister_all.3 man/gearman_worker_wait.3 \
-	man/gearman_worker_work.3 man/libgearman.3
-man_MANS = 
+SUBDIRS = man .
 LIBTOOL_COMMAND = ${abs_top_builddir}/libtool --mode=execute
 VALGRIND_EXEC_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=memcheck --error-exitcode=1 --leak-check=yes --track-fds=yes --malloc-fill=A5 --free-fill=DE --fullpath-after=.
 SGCHECK_EXEC_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=exp-sgcheck --error-exitcode=1
@@ -2585,9 +2379,11 @@ libtest_libtest_la_CXXFLAGS = @LIBMEMCACHED_CFLAGS@ -DBUILDING_LIBTEST \
 	$(CURL_CFLAGS)
 EXTRA_libtest_libtest_la_DEPENDENCIES = libtest_tmp_dir libtest/abort \
 	libtest/wait
-libtest_libtest_la_LDFLAGS = @LIBDRIZZLE_LDFLAGS@
-libtest_libtest_la_LIBADD = @LIBMEMCACHED_LIB@ @CYASSL_LIB@ \
-	@PTHREAD_LIBS@ $(CURL_LIBS) @RT_LIB@ @LIBDRIZZLE_LIB@
+libtest_libtest_la_LDFLAGS = $(am__append_2) $(am__append_4) \
+	@LIBDRIZZLE_LDFLAGS@ $(am__empty)
+libtest_libtest_la_LIBADD = @LIBMEMCACHED_LIB@ $(am__append_1) \
+	$(am__append_3) @PTHREAD_LIBS@ $(CURL_LIBS) @RT_LIB@ \
+	@LIBDRIZZLE_LIB@ $(am__empty)
 
 # We are either building in tree, or with
 libtest_libtest_la_SOURCES = libtest/alarm.cc libtest/binaries.cc \
@@ -2602,7 +2398,7 @@ libtest_libtest_la_SOURCES = libtest/alarm.cc libtest/binaries.cc \
 	libtest/server_container.cc libtest/signal.cc \
 	libtest/socket.cc libtest/strerror.cc libtest/timer.cc \
 	libtest/tmpfile.cc libtest/vchar.cc libtest/memcached.cc \
-	libtest/gearmand.cc $(am__append_1)
+	libtest/gearmand.cc $(am__append_5)
 TMP_DIR := tmp_chroot/etc tmp_chroot/var/log tmp_chroot/var/tmp tmp_chroot/var/run tmp_chroot/var/drizzle
 
 # Declare unittest so that we can append to it
@@ -2653,16 +2449,25 @@ libhostile_libhostile_la_CFLAGS = -DBUILDING_LIBHOSTILE \
 	@PTHREAD_CFLAGS@ $(am__empty)
 libhostile_libhostile_la_CXXFLAGS = -DBUILDING_LIBHOSTILE \
 	@PTHREAD_CFLAGS@ $(am__empty)
-libhostile_libhostile_la_LIBADD = $(am__append_2)
+libhostile_libhostile_la_LIBADD = $(am__append_6)
 libhostile_libhostile_la_SOURCES = libhostile/initialize.c \
-	$(am__append_3) $(am__append_4)
+	$(am__append_7) $(am__append_8)
+docs_libgearman_examples_gearman_execute_example_SOURCES = docs/libgearman/examples/gearman_execute_example.c
+docs_libgearman_examples_gearman_execute_example_LDADD = libgearman/libgearman.la
+docs_libgearman_examples_gearman_execute_partition_SOURCES = docs/libgearman/examples/gearman_execute_partition.c
+docs_libgearman_examples_gearman_execute_partition_LDADD = libgearman/libgearman.la
+docs_libgearman_examples_gearman_client_do_example_SOURCES = docs/libgearman/examples/gearman_client_do_example.c
+docs_libgearman_examples_gearman_client_do_example_LDADD = libgearman/libgearman.la
+docs_libgearman_examples_gearman_client_do_background_example_SOURCES = docs/libgearman/examples/gearman_client_do_background_example.c
+docs_libgearman_examples_gearman_client_do_background_example_LDADD = libgearman/libgearman.la
 libgearman_libgearmancore_la_SOURCES = libgearman/allocator.cc \
 	libgearman/backtrace.cc libgearman/byteorder.cc \
 	libgearman/check.cc libgearman/command.cc \
 	libgearman/connection.cc libgearman/error.cc \
 	libgearman/error_code.cc libgearman/kill.cc libgearman/log.cc \
-	libgearman/packet.cc libgearman/protocol/echo.cc \
-	libgearman/protocol/option.cc libgearman/protocol/submit.cc \
+	libgearman/packet.cc libgearman/pipe.cc \
+	libgearman/protocol/echo.cc libgearman/protocol/option.cc \
+	libgearman/protocol/submit.cc \
 	libgearman/protocol/work_exception.cc \
 	libgearman/server_options.cc libgearman/strerror.cc \
 	libgearman/universal.cc libgearman/uuid.cc \
@@ -2680,8 +2485,8 @@ libhashkit_libhashkit_la_SOURCES = libhashkit/aes.cc \
 	libhashkit/murmur.cc libhashkit/murmur3.cc \
 	libhashkit/murmur3_api.cc libhashkit/one_at_a_time.cc \
 	libhashkit/rijndael.cc libhashkit/str_algorithm.cc \
-	libhashkit/strerror.cc libhashkit/string.cc $(am__append_5) \
-	$(am__append_6)
+	libhashkit/strerror.cc libhashkit/string.cc $(am__append_9) \
+	$(am__append_10)
 libhashkit_libhashkit_la_CXXFLAGS =  \
 	-DCONFIG_HEADER="\"@AUTOHEADER_FILE@\""
 libhashkit_libhashkit_la_CFLAGS =  \
@@ -2707,8 +2512,10 @@ BENCHMARK_TASK_COUNT_TOTAL = 1000
 bin_gearadmin_SOURCES = bin/gearadmin.cc util/instance.cc \
 	util/operation.cc
 bin_gearadmin_CXXFLAGS = @BOOST_CPPFLAGS@
-bin_gearadmin_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS)
-bin_gearadmin_LDADD = $(BOOST_PROGRAM_OPTIONS_LIBS) @CYASSL_LIB@
+bin_gearadmin_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS) \
+	$(am__append_12) $(am__append_14)
+bin_gearadmin_LDADD = $(BOOST_PROGRAM_OPTIONS_LIBS) $(am__append_11) \
+	$(am__append_13)
 bin_gearman_SOURCES = bin/arguments.cc bin/function.cc bin/gearman.cc \
 	bin/error.cc util/pidfile.cc
 bin_gearman_LDADD = libgearman/libgearman.la
@@ -2755,8 +2562,8 @@ examples_wc_worker_LDADD = $(EXAMPLES_LDADD)
 examples_wc_worker_CXXFLAGS = $(BOOST_CPPFLAGS)
 examples_wc_worker_LDFLAGS = $(EXAMPLES_LD_FLAGS)
 gearmand_gearmand_LDADD = libgearman-server/libgearman-server.la \
-	@LIBDRIZZLE_LDFLAGS@ @LIBDRIZZLE_LIB@ $(am__append_11) \
-	$(am__append_15)
+	@LIBDRIZZLE_LDFLAGS@ @LIBDRIZZLE_LIB@ $(am__append_19) \
+	$(am__append_23)
 gearmand_gearmand_CXXFLAGS = $(BOOST_CPPFLAGS)
 EXTRA_gearmand_gearmand_DEPENDENCIES = configmake.h
 gearmand_gearmand_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS)
@@ -2766,20 +2573,21 @@ gearmand_hostile_gearmand_CXXFLAGS = $(gearmand_gearmand_CXXFLAGS)
 EXTRA_gearmand_hostile_gearmand_DEPENDENCIES =  \
 	$(EXTRA_gearmand_gearmand_DEPENDENCIES)
 gearmand_hostile_gearmand_LDADD = @DL_LIB@ \
-	libgearman-server/libgearman-server.la $(am__append_7)
+	libgearman-server/libgearman-server.la $(am__append_15)
 gearmand_hostile_gearmand_LDFLAGS = $(gearmand_gearmand_LDFLAGS)
 gearmand_hostile_gearmand_SOURCES = $(gearmand_gearmand_SOURCES)
-libgearman_server_libgearman_server_la_CFLAGS = $(am__append_17) \
-	$(am__append_23) @PTHREAD_CFLAGS@ -DBUILDING_LIBGEARMAN
-libgearman_server_libgearman_server_la_CXXFLAGS = $(am__append_9) \
-	$(am__append_14) $(am__append_18) $(am__append_24) \
+libgearman_server_libgearman_server_la_CFLAGS = $(am__append_25) \
+	$(am__append_31) @PTHREAD_CFLAGS@ -DBUILDING_LIBGEARMAN
+libgearman_server_libgearman_server_la_CXXFLAGS = $(am__append_17) \
+	$(am__append_22) $(am__append_26) $(am__append_32) \
 	@BOOST_CPPFLAGS@ @PTHREAD_CFLAGS@ -DBUILDING_LIBGEARMAN
-libgearman_server_libgearman_server_la_LDFLAGS = $(am__append_25)
+libgearman_server_libgearman_server_la_LDFLAGS = $(am__append_33) \
+	$(am__append_35) $(am__append_37)
 libgearman_server_libgearman_server_la_LIBADD = @LIBDRIZZLE_LDFLAGS@ \
-	@LIBDRIZZLE_LIB@ $(am__append_10) $(am__append_13) \
-	@HIREDIS_LIB@ $(am__append_19) $(am__append_21) @LIBEVENT_LIB@ \
+	@LIBDRIZZLE_LIB@ $(am__append_18) $(am__append_21) \
+	@HIREDIS_LIB@ $(am__append_27) $(am__append_29) @LIBEVENT_LIB@ \
 	@PTHREAD_LIBS@ $(BOOST_PROGRAM_OPTIONS_LIBS) @LIBM@ @DL_LIB@ \
-	@RT_LIB@ @CYASSL_LIB@ $(am__empty)
+	@RT_LIB@ $(am__append_34) $(am__append_36)
 libgearman_server_libgearman_server_la_SOURCES =  \
 	libgearman-server/error/strerror.cc \
 	libgearman-server/plugins/base.cc \
@@ -2790,9 +2598,9 @@ libgearman_server_libgearman_server_la_SOURCES =  \
 	libgearman-server/plugins/queue/base.cc \
 	libgearman-server/plugins/queue/default/queue.cc \
 	libgearman-server/plugins/queue/drizzle/queue.cc \
-	$(am__append_8) $(am__append_12) \
+	$(am__append_16) $(am__append_20) \
 	libgearman-server/plugins/queue/redis/queue.cc \
-	$(am__append_16) $(am__append_20) $(am__append_22) \
+	$(am__append_24) $(am__append_28) $(am__append_30) \
 	libgearman/backtrace.cc libgearman/pipe.cc \
 	libgearman/vector.cc libgearman-server/text.cc \
 	libgearman-server/config.cc libgearman-server/byteorder.cc \
@@ -2814,8 +2622,9 @@ libgearman_libgearman_result_la_CXXFLAGS = -DBUILDING_LIBGEARMAN
 libgearman_libgearman_result_la_LIBADD = @DL_LIB@
 libgearman_libgearman_result_la_SOURCES = libgearman/vector.cc \
 	libgearman/result.cc libgearman/backtrace.cc
-libgearman_libgearman_la_LIBADD = @CYASSL_LIB@ @DL_LIB@ @LIBUUID_LIB@ \
-	libhashkit/libhashkit.la $(am__append_26)
+libgearman_libgearman_la_LIBADD = $(am__append_38) $(am__append_40) \
+	@DL_LIB@ @LIBUUID_LIB@ libhashkit/libhashkit.la \
+	$(am__append_42)
 libgearman_libgearman_la_SOURCES = libgearman/check.cc \
 	libgearman/actions.cc libgearman/aggregator.cc \
 	libgearman/allocator.cc libgearman/argument.cc \
@@ -2840,7 +2649,7 @@ libgearman_libgearman_la_SOURCES = libgearman/check.cc \
 	libgearman/command.hpp
 libgearman_libgearman_la_CXXFLAGS = -DBUILDING_LIBGEARMAN
 libgearman_libgearman_la_LDFLAGS = -version-info \
-	$(GEARMAN_LIBRARY_VERSION)
+	$(GEARMAN_LIBRARY_VERSION) $(am__append_39) $(am__append_41)
 libgearman_libgearman_hostile_la_LIBADD = $(libgearman_libgearman_la_LIBADD)
 libgearman_libgearman_hostile_la_SOURCES = $(libgearman_libgearman_la_SOURCES)
 libgearman_libgearman_hostile_la_CXXFLAGS = $(libgearman_libgearman_la_CXXFLAGS)
@@ -2922,7 +2731,7 @@ t_stress_LDADD = libgearman/libgearman.la libtest/libtest.la \
 t_stress_SOURCES = tests/burnin.cc
 t_hostile_gearmand_CFLAGS = -DHAVE_LIBHOSTILE=1
 t_hostile_gearmand_CXXFLAGS = -DHAVE_LIBHOSTILE=1
-t_hostile_gearmand_LDADD = libhostile/libhostile.la $(am__append_27) \
+t_hostile_gearmand_LDADD = libhostile/libhostile.la $(am__append_43) \
 	libgearman/libgearman.la libtest/libtest.la \
 	tests/libstartworker.la
 t_hostile_gearmand_SOURCES = tests/hostile.cc
@@ -2930,7 +2739,7 @@ t_hostile_libgearman_CFLAGS = -DHAVE_LIBHOSTILE=1 \
 	-DSERVER_TARGET="\"gearmand\""
 t_hostile_libgearman_CXXFLAGS = -DHAVE_LIBHOSTILE=1 \
 	-DSERVER_TARGET="\"gearmand\""
-t_hostile_libgearman_LDADD = libhostile/libhostile.la $(am__append_28) \
+t_hostile_libgearman_LDADD = libhostile/libhostile.la $(am__append_44) \
 	libgearman/libgearman-hostile.la libtest/libtest.la \
 	tests/libstartworker.la
 t_hostile_libgearman_SOURCES = tests/hostile.cc
@@ -2945,8 +2754,8 @@ tests_libstartworker_la_SOURCES = tests/start_worker.cc \
 	tests/workers/v1/echo_or_react_chunk_worker.cc \
 	tests/workers/v1/increment_reset_worker.cc \
 	tests/workers/v1/unique.cc tests/workers/v2/call_exception.cc \
-	tests/workers/v2/called.cc tests/workers/v2/count.cc \
-	tests/workers/v2/echo_or_react.cc \
+	tests/workers/v2/called.cc tests/workers/v2/client_echo.cc \
+	tests/workers/v2/count.cc tests/workers/v2/echo_or_react.cc \
 	tests/workers/v2/echo_or_react_chunk.cc \
 	tests/workers/v2/increment_reset.cc \
 	tests/workers/v2/check_order.cc \
@@ -2973,10 +2782,10 @@ t_drizzle_SOURCES = tests/basic.cc tests/drizzle_test.cc
 t_drizzle_LDADD = libgearman/libgearman.la libtest/libtest.la \
 	tests/libstartworker.la @LIBDRIZZLE_LIB@
 t_drizzle_LDFLAGS = @LIBDRIZZLE_LDFLAGS@
-t_memcached_CXXFLAGS = $(am__append_29)
+t_memcached_CXXFLAGS = $(am__append_45)
 t_memcached_SOURCES = tests/basic.cc tests/memcached_test.cc
 t_memcached_LDADD = libgearman/libgearman.la libtest/libtest.la \
-	tests/libstartworker.la $(am__append_30)
+	tests/libstartworker.la $(am__append_46)
 t_postgres_SOURCES = tests/basic.cc tests/postgres_test.cc
 t_postgres_CXXFLAGS = 
 t_postgres_LDADD = ${CLIENT_LDADD}
@@ -3022,30 +2831,14 @@ t_httpd_SOURCES = tests/httpd_test.cc
 t_httpd_LDADD = $(CLIENT_LDADD)
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = support/gearmand.pc
-SPHINXOPTS = ${SPHINX_WARNINGS} -q
-PAPER = 
-SPHINX_BUILDDIR = ${abs_srcdir}/docs
-
-# Internal variables.
-PAPEROPT_a4 = -D latex_paper_size=a4
-PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS = -c $(top_builddir)/docs $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SPHINX_BUILDDIR)
-docs_libgearman_examples_gearman_execute_example_SOURCES = docs/libgearman/examples/gearman_execute_example.c
-docs_libgearman_examples_gearman_execute_example_LDADD = libgearman/libgearman.la
-docs_libgearman_examples_gearman_execute_partition_SOURCES = docs/libgearman/examples/gearman_execute_partition.c
-docs_libgearman_examples_gearman_execute_partition_LDADD = libgearman/libgearman.la
-docs_libgearman_examples_gearman_client_do_example_SOURCES = docs/libgearman/examples/gearman_client_do_example.c
-docs_libgearman_examples_gearman_client_do_example_LDADD = libgearman/libgearman.la
-docs_libgearman_examples_gearman_client_do_background_example_SOURCES = docs/libgearman/examples/gearman_client_do_background_example.c
-docs_libgearman_examples_gearman_client_do_background_example_LDADD = libgearman/libgearman.la
 all: $(BUILT_SOURCES) gear_config.h
-	$(MAKE) $(AM_MAKEFLAGS) all-am
+	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .c .cc .lo .log .o .obj .test .test$(EXEEXT) .trs
+.SUFFIXES: .c .cc .lo .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/libtest/include.am $(srcdir)/libhostile/include.am $(srcdir)/libhostile/t/include.am $(srcdir)/libhashkit-1.0/include.am $(srcdir)/libgearmancore/include.am $(srcdir)/libhashkit/include.am $(srcdir)/benchmark/include.am $(srcdir)/bin/include.am $(srcdir)/examples/include.am $(srcdir)/gearmand/include.am $(srcdir)/libgearman-server/include.am $(srcdir)/libgearman-server/struct/include.am $(srcdir)/libgearman-server/error/include.am $(srcdir)/libgearman-server/plugins/include.am $(srcdir)/libgearman-server/plugins/protocol/include.am $(srcdir)/libgearman-server/plugins/protocol/http/include.am $(srcdir)/libgearman-server/plugins/protocol/gear/include.am $(srcdir)/libgearman-server/plugins/queue/include.am $(srcdir)/libgearman-server/plugins/queue/default/include.am $(srcdir)/libgearman-server/plugins/queue/drizzle/include.am $(srcdir)/libgearman-server/plugins/queue/libmemcached/include.am $(srcdir)/libgearman-server/plugins/queue/postgres/include.am $(srcdir)/libgearman-server/plugins/queue/redis/include.am $(srcdir)/libgearman-server/plugins/queue/sqlite/include.am $(srcdir)/libgearman-server/plugins/queue/tokyocabinet/include.am $(srcdir)/libgearman-server/plugins/queue/mysql/include.am $(srcdir)/libgearman/include.am $(srcdir)/libgearman-1.0/include.am $(srcdir)/libgearman-1.0/t/include.am $(srcdir)/util/include.am $(srcdir)/tests/include.am $(srcdir)/tests/libgearman-1.0/include.am $(srcdir)/tests/stress.am $(srcdir)/tests/hostile.am $(srcdir)/tests/workers/include.am $(srcdir)/tests/protocol.mk $(srcdir)/tests/ephemeral.am $(srcdir)/tests/libdrizzle.am $(srcdir)/tests/libmemcached.am $(srcdir)/tests/postgres.am $(srcdir)/tests/mysql.am $(srcdir)/tests/sqlite.am $(srcdir)/tests/tokyocabinet.am $(srcdir)/tests/redis.am $(srcdir)/tests/httpd.am $(srcdir)/tests/perl/include.am $(srcdir)/support/include.am $(srcdir)/docs/include.am $(srcdir)/man/include.am $(srcdir)/m4/include.am $(srcdir)/rpm.am $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/libtest/include.am $(srcdir)/libhostile/include.am $(srcdir)/libhostile/t/include.am $(srcdir)/libhashkit-1.0/include.am $(srcdir)/docs/examples.mk $(srcdir)/libgearmancore/include.am $(srcdir)/libhashkit/include.am $(srcdir)/benchmark/include.am $(srcdir)/bin/include.am $(srcdir)/examples/include.am $(srcdir)/gearmand/include.am $(srcdir)/libgearman-server/include.am $(srcdir)/libgearman-server/struct/include.am $(srcdir)/libgearman-server/error/include.am $(srcdir)/libgearman-server/plugins/include.am $(srcdir)/libgearman-server/plugins/protocol/include.am $(srcdir)/libgearman-server/plugins/protocol/http/include.am $(srcdir)/libgearman-server/plugins/protocol/gear/include.am $(srcdir)/libgearman-server/plugins/queue/include.am $(srcdir)/libgearman-server/plugins/queue/default/include.am $(srcdir)/libgearman-server/plugins/queue/drizzle/include.am $(srcdir)/libgearman-server/plugins/queue/libmemcached/include.am $(srcdir)/libgearman-server/plugins/queue/postgres/include.am $(srcdir)/libgearman-server/plugins/queue/redis/include.am $(srcdir)/libgearman-server/plugins/queue/sqlite/include.am $(srcdir)/libgearman-server/plugins/queue/tokyocabinet/include.am $(srcdir)/libgearman-server/plugins/queue/mysql/include.am $(srcdir)/libgearman/include.am $(srcdir)/libgearman-1.0/include.am $(srcdir)/libgearman-1.0/t/include.am $(srcdir)/util/include.am $(srcdir)/tests/include.am $(srcdir)/tests/libgearman-1.0/include.am $(srcdir)/tests/stress.am $(srcdir)/tests/hostile.am $(srcdir)/tests/workers/include.am $(srcdir)/tests/protocol.mk $(srcdir)/tests/ephemeral.am $(srcdir)/tests/libdrizzle.am $(srcdir)/tests/libmemcached.am $(srcdir)/tests/postgres.am $(srcdir)/tests/mysql.am $(srcdir)/tests/sqlite.am $(srcdir)/tests/tokyocabinet.am $(srcdir)/tests/redis.am $(srcdir)/tests/httpd.am $(srcdir)/tests/perl/include.am $(srcdir)/support/include.am $(srcdir)/m4/include.am $(srcdir)/rpm.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -3068,7 +2861,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/libtest/include.am $(srcdir)/libhostile/include.am $(srcdir)/libhostile/t/include.am $(srcdir)/libhashkit-1.0/include.am $(srcdir)/libgearmancore/include.am $(srcdir)/libhashkit/include.am $(srcdir)/benchmark/include.am $(srcdir)/bin/include.am $(srcdir)/examples/include.am $(srcdir)/gearmand/include.am $(srcdir)/libgearman-server/include.am $(srcdir)/libgearman-server/struct/include.am $(srcdir)/libgearman-server/error/include.am $(srcdir)/libgearman-server/plugins/include.am $(srcdir)/libgearman-server/plugins/protocol/include.am $(srcdir)/libgearman-server/plugins/protocol/http/include.am $(srcdir)/libgearman-server/plugins/protocol/gear/include.am $(srcdir)/libgearman-server/plugins/queue/include.am $(srcdir)/libgearman-server/plugins/queue/default/include.am $(srcdir)/libgearman-server/plugins/queue/drizzle/include.am $(srcdir)/libgearman-server/plugins/queue/libmemcached/include.am $(srcdir)/libgearman-server/plugins/queue/postgres/include.am $(srcdir)/libgearman-server/plugins/queue/redis/include.am $(srcdir)/libgearman-server/plugins/queue/sqlite/include.am $(srcdir)/libgearman-server/plugins/queue/tokyocabinet/include.am $(srcdir)/libgearman-server/plugins/queue/mysql/include.am $(srcdir)/libgearman/include.am $(srcdir)/libgearman-1.0/include.am $(srcdir)/libgearman-1.0/t/include.am $(srcdir)/util/include.am $(srcdir)/tests/include.am $(srcdir)/tests/libgearman-1.0/include.am $(srcdir)/tests/stress.am $(srcdir)/tests/hostile.am $(srcdir)/tests/workers/include.am $(srcdir)/tests/protocol.mk $(srcdir)/tests/ephemeral.am $(srcdir)/tests/libdrizzle.am $(srcdir)/tests/libmemcached.am $(srcdir)/tests/postgres.am $(srcdir)/tests/mysql.am $(srcdir)/tests/sqlite.am $(srcdir)/tests/tokyocabinet.am $(srcdir)/tests/redis.am $(srcdir)/tests/httpd.am $(srcdir)/tests/perl/include.am $(srcdir)/support/include.am $(srcdir)/docs/include.am $(srcdir)/man/include.am $(srcdir)/m4/include.am $(srcdir)/rpm.am:
+$(srcdir)/libtest/include.am $(srcdir)/libhostile/include.am $(srcdir)/libhostile/t/include.am $(srcdir)/libhashkit-1.0/include.am $(srcdir)/docs/examples.mk $(srcdir)/libgearmancore/include.am $(srcdir)/libhashkit/include.am $(srcdir)/benchmark/include.am $(srcdir)/bin/include.am $(srcdir)/examples/include.am $(srcdir)/gearmand/include.am $(srcdir)/libgearman-server/include.am $(srcdir)/libgearman-server/struct/include.am $(srcdir)/libgearman-server/error/include.am $(srcdir)/libgearman-server/plugins/include.am $(srcdir)/libgearman-server/plugins/protocol/include.am $(srcdir)/libgearman-server/plugins/protocol/http/include.am $(srcdir)/libgearman-server/plugins/protocol/gear/include.am $(srcdir)/libgearman-server/plugins/queue/include.am $(srcdir)/libgearman-server/plugins/queue/default/include.am $(srcdir)/libgearman-server/plugins/queue/drizzle/include.am $(srcdir)/libgearman-server/plugins/queue/libmemcached/include.am $(srcdir)/libgearman-server/plugins/queue/postgres/include.am $(srcdir)/libgearman-server/plugins/queue/redis/include.am $(srcdir)/libgearman-server/plugins/queue/sqlite/include.am $(srcdir)/libgearman-server/plugins/queue/tokyocabinet/include.am $(srcdir)/libgearman-server/plugins/queue/mysql/include.am $(srcdir)/libgearman/include.am $(srcdir)/libgearman-1.0/include.am $(srcdir)/libgearman-1.0/t/include.am $(srcdir)/util/include.am $(srcdir)/tests/include.am $(srcdir)/tests/libgearman-1.0/include.am $(srcdir)/tests/stress.am $(srcdir)/tests/hostile.am $(srcdir)/tests/workers/include.am $(srcdir)/tests/protocol.mk $(srcdir)/tests/ephemeral.am $(srcdir)/tests/libdrizzle.am $(srcdir)/tests/libmemcached.am $(srcdir)/tests/postgres.am $(srcdir)/tests/mysql.am $(srcdir)/tests/sqlite.am $(srcdir)/tests/tokyocabinet.am $(srcdir)/tests/redis.am $(srcdir)/tests/httpd.am $(srcdir)/tests/perl/include.am $(srcdir)/support/include.am $(srcdir)/m4/include.am $(srcdir)/rpm.am:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -3730,6 +3523,9 @@ libgearman/libgearman_libgearmancore_la-log.lo:  \
 libgearman/libgearman_libgearmancore_la-packet.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
+libgearman/libgearman_libgearmancore_la-pipe.lo:  \
+	libgearman/$(am__dirstamp) \
+	libgearman/$(DEPDIR)/$(am__dirstamp)
 libgearman/protocol/libgearman_libgearmancore_la-echo.lo:  \
 	libgearman/protocol/$(am__dirstamp) \
 	libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
@@ -4123,6 +3919,9 @@ tests/workers/v2/tests_libstartworker_la-call_exception.lo:  \
 	tests/workers/v2/$(am__dirstamp) \
 	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
 tests/workers/v2/tests_libstartworker_la-called.lo:  \
+	tests/workers/v2/$(am__dirstamp) \
+	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
+tests/workers/v2/tests_libstartworker_la-client_echo.lo:  \
 	tests/workers/v2/$(am__dirstamp) \
 	tests/workers/v2/$(DEPDIR)/$(am__dirstamp)
 tests/workers/v2/tests_libstartworker_la-count.lo:  \
@@ -5043,6 +4842,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-kill.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-log.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-packet.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-pipe.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-server_options.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-strerror.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-universal.Plo@am__quote@
@@ -5261,6 +5061,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-call_exception.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-called.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-check_order.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-client_echo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-count.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-echo_or_react.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-echo_or_react_chunk.Plo@am__quote@
@@ -6513,6 +6314,13 @@ libgearman/libgearman_libgearmancore_la-packet.lo: libgearman/packet.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearmancore_la-packet.lo `test -f 'libgearman/packet.cc' || echo '$(srcdir)/'`libgearman/packet.cc
 
+libgearman/libgearman_libgearmancore_la-pipe.lo: libgearman/pipe.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/libgearman_libgearmancore_la-pipe.lo -MD -MP -MF libgearman/$(DEPDIR)/libgearman_libgearmancore_la-pipe.Tpo -c -o libgearman/libgearman_libgearmancore_la-pipe.lo `test -f 'libgearman/pipe.cc' || echo '$(srcdir)/'`libgearman/pipe.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/$(DEPDIR)/libgearman_libgearmancore_la-pipe.Tpo libgearman/$(DEPDIR)/libgearman_libgearmancore_la-pipe.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libgearman/pipe.cc' object='libgearman/libgearman_libgearmancore_la-pipe.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearmancore_la-pipe.lo `test -f 'libgearman/pipe.cc' || echo '$(srcdir)/'`libgearman/pipe.cc
+
 libgearman/protocol/libgearman_libgearmancore_la-echo.lo: libgearman/protocol/echo.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/protocol/libgearman_libgearmancore_la-echo.lo -MD -MP -MF libgearman/protocol/$(DEPDIR)/libgearman_libgearmancore_la-echo.Tpo -c -o libgearman/protocol/libgearman_libgearmancore_la-echo.lo `test -f 'libgearman/protocol/echo.cc' || echo '$(srcdir)/'`libgearman/protocol/echo.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/protocol/$(DEPDIR)/libgearman_libgearmancore_la-echo.Tpo libgearman/protocol/$(DEPDIR)/libgearman_libgearmancore_la-echo.Plo
@@ -7233,6 +7041,13 @@ tests/workers/v2/tests_libstartworker_la-called.lo: tests/workers/v2/called.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tests/workers/v2/called.cc' object='tests/workers/v2/tests_libstartworker_la-called.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -c -o tests/workers/v2/tests_libstartworker_la-called.lo `test -f 'tests/workers/v2/called.cc' || echo '$(srcdir)/'`tests/workers/v2/called.cc
+
+tests/workers/v2/tests_libstartworker_la-client_echo.lo: tests/workers/v2/client_echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -MT tests/workers/v2/tests_libstartworker_la-client_echo.lo -MD -MP -MF tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-client_echo.Tpo -c -o tests/workers/v2/tests_libstartworker_la-client_echo.lo `test -f 'tests/workers/v2/client_echo.cc' || echo '$(srcdir)/'`tests/workers/v2/client_echo.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-client_echo.Tpo tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-client_echo.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tests/workers/v2/client_echo.cc' object='tests/workers/v2/tests_libstartworker_la-client_echo.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -c -o tests/workers/v2/tests_libstartworker_la-client_echo.lo `test -f 'tests/workers/v2/client_echo.cc' || echo '$(srcdir)/'`tests/workers/v2/client_echo.cc
 
 tests/workers/v2/tests_libstartworker_la-count.lo: tests/workers/v2/count.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libstartworker_la_CXXFLAGS) $(CXXFLAGS) -MT tests/workers/v2/tests_libstartworker_la-count.lo -MD -MP -MF tests/workers/v2/$(DEPDIR)/tests_libstartworker_la-count.Tpo -c -o tests/workers/v2/tests_libstartworker_la-count.lo `test -f 'tests/workers/v2/count.cc' || echo '$(srcdir)/'`tests/workers/v2/count.cc
@@ -8256,135 +8071,6 @@ clean-libtool:
 
 distclean-libtool:
 	-rm -f libtool config.lt
-install-man1: $(dist_man_MANS) $(man1_MANS) $(man_MANS)
-	@$(NORMAL_INSTALL)
-	@list1='$(man1_MANS)'; \
-	list2='$(dist_man_MANS) $(man_MANS)'; \
-	test -n "$(man1dir)" \
-	  && test -n "`echo $$list1$$list2`" \
-	  || exit 0; \
-	echo " $(MKDIR_P) '$(DESTDIR)$(man1dir)'"; \
-	$(MKDIR_P) "$(DESTDIR)$(man1dir)" || exit 1; \
-	{ for i in $$list1; do echo "$$i"; done;  \
-	if test -n "$$list2"; then \
-	  for i in $$list2; do echo "$$i"; done \
-	    | sed -n '/\.1[a-z]*$$/p'; \
-	fi; \
-	} | while read p; do \
-	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; echo "$$p"; \
-	done | \
-	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
-	sed 'N;N;s,\n, ,g' | { \
-	list=; while read file base inst; do \
-	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
-	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man1dir)/$$inst'"; \
-	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man1dir)/$$inst" || exit $$?; \
-	  fi; \
-	done; \
-	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
-	while read files; do \
-	  test -z "$$files" || { \
-	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man1dir)'"; \
-	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man1dir)" || exit $$?; }; \
-	done; }
-
-uninstall-man1:
-	@$(NORMAL_UNINSTALL)
-	@list='$(man1_MANS)'; test -n "$(man1dir)" || exit 0; \
-	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
-	  sed -n '/\.1[a-z]*$$/p'; \
-	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
-	dir='$(DESTDIR)$(man1dir)'; $(am__uninstall_files_from_dir)
-install-man3: $(dist_man_MANS) $(man3_MANS) $(man_MANS)
-	@$(NORMAL_INSTALL)
-	@list1='$(man3_MANS)'; \
-	list2='$(dist_man_MANS) $(man_MANS)'; \
-	test -n "$(man3dir)" \
-	  && test -n "`echo $$list1$$list2`" \
-	  || exit 0; \
-	echo " $(MKDIR_P) '$(DESTDIR)$(man3dir)'"; \
-	$(MKDIR_P) "$(DESTDIR)$(man3dir)" || exit 1; \
-	{ for i in $$list1; do echo "$$i"; done;  \
-	if test -n "$$list2"; then \
-	  for i in $$list2; do echo "$$i"; done \
-	    | sed -n '/\.3[a-z]*$$/p'; \
-	fi; \
-	} | while read p; do \
-	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; echo "$$p"; \
-	done | \
-	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^3][0-9a-z]*$$,3,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
-	sed 'N;N;s,\n, ,g' | { \
-	list=; while read file base inst; do \
-	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
-	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man3dir)/$$inst'"; \
-	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man3dir)/$$inst" || exit $$?; \
-	  fi; \
-	done; \
-	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
-	while read files; do \
-	  test -z "$$files" || { \
-	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man3dir)'"; \
-	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man3dir)" || exit $$?; }; \
-	done; }
-
-uninstall-man3:
-	@$(NORMAL_UNINSTALL)
-	@list='$(man3_MANS)'; test -n "$(man3dir)" || exit 0; \
-	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
-	  sed -n '/\.3[a-z]*$$/p'; \
-	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^3][0-9a-z]*$$,3,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
-	dir='$(DESTDIR)$(man3dir)'; $(am__uninstall_files_from_dir)
-install-man8: $(dist_man_MANS) $(man8_MANS) $(man_MANS)
-	@$(NORMAL_INSTALL)
-	@list1='$(man8_MANS)'; \
-	list2='$(dist_man_MANS) $(man_MANS)'; \
-	test -n "$(man8dir)" \
-	  && test -n "`echo $$list1$$list2`" \
-	  || exit 0; \
-	echo " $(MKDIR_P) '$(DESTDIR)$(man8dir)'"; \
-	$(MKDIR_P) "$(DESTDIR)$(man8dir)" || exit 1; \
-	{ for i in $$list1; do echo "$$i"; done;  \
-	if test -n "$$list2"; then \
-	  for i in $$list2; do echo "$$i"; done \
-	    | sed -n '/\.8[a-z]*$$/p'; \
-	fi; \
-	} | while read p; do \
-	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; echo "$$p"; \
-	done | \
-	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
-	sed 'N;N;s,\n, ,g' | { \
-	list=; while read file base inst; do \
-	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
-	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man8dir)/$$inst'"; \
-	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man8dir)/$$inst" || exit $$?; \
-	  fi; \
-	done; \
-	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
-	while read files; do \
-	  test -z "$$files" || { \
-	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man8dir)'"; \
-	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man8dir)" || exit $$?; }; \
-	done; }
-
-uninstall-man8:
-	@$(NORMAL_UNINSTALL)
-	@list='$(man8_MANS)'; test -n "$(man8dir)" || exit 0; \
-	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
-	  sed -n '/\.8[a-z]*$$/p'; \
-	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
-	dir='$(DESTDIR)$(man8dir)'; $(am__uninstall_files_from_dir)
 install-pkgconfigDATA: $(pkgconfig_DATA)
 	@$(NORMAL_INSTALL)
 	@list='$(pkgconfig_DATA)'; test -n "$(pkgconfigdir)" || list=; \
@@ -8431,14 +8117,61 @@ uninstall-nobase_includeHEADERS:
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
 	dir='$(DESTDIR)$(includedir)'; $(am__uninstall_files_from_dir)
 
+# This directory's subdirectories are mostly independent; you can cd
+# into them and run 'make' without going through this Makefile.
+# To change the values of 'make' variables: instead of editing Makefiles,
+# (1) if the variable is set in 'config.status', edit 'config.status'
+#     (which will cause the Makefiles to be regenerated when you run 'make');
+# (2) otherwise, pass the desired values on the 'make' command line.
+$(am__recursive_targets):
+	@fail=; \
+	if $(am__make_keepgoing); then \
+	  failcom='fail=yes'; \
+	else \
+	  failcom='exit 1'; \
+	fi; \
+	dot_seen=no; \
+	target=`echo $@ | sed s/-recursive//`; \
+	case "$@" in \
+	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
+	  *) list='$(SUBDIRS)' ;; \
+	esac; \
+	for subdir in $$list; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    dot_seen=yes; \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done; \
+	if test "$$dot_seen" = "no"; then \
+	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
+	fi; test -z "$$fail"
+
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
-tags: tags-am
+tags: tags-recursive
 TAGS: tags
 
 tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	set x; \
 	here=`pwd`; \
+	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
+	  include_option=--etags-include; \
+	  empty_fix=.; \
+	else \
+	  include_option=--include; \
+	  empty_fix=; \
+	fi; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test ! -f $$subdir/TAGS || \
+	      set "$$@" "$$include_option=$$here/$$subdir/TAGS"; \
+	  fi; \
+	done; \
 	$(am__define_uniq_tagged_files); \
 	shift; \
 	if test -z "$(ETAGS_ARGS)$$*$$unique"; then :; else \
@@ -8451,7 +8184,7 @@ tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	      $$unique; \
 	  fi; \
 	fi
-ctags: ctags-am
+ctags: ctags-recursive
 
 CTAGS: ctags
 ctags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
@@ -8470,7 +8203,7 @@ cscope: cscope.files
 clean-cscope:
 	-rm -f cscope.files
 cscope.files: clean-cscope cscopelist
-cscopelist: cscopelist-am
+cscopelist: cscopelist-recursive
 
 cscopelist-am: $(am__tagged_files)
 	list='$(am__tagged_files)'; \
@@ -8490,413 +8223,98 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 	-rm -f cscope.out cscope.in.out cscope.po.out cscope.files
 
-# Recover from deleted '.trs' file; this should ensure that
-# "rm -f foo.log; make foo.trs" re-run 'foo.test', and re-create
-# both 'foo.log' and 'foo.trs'.  Break the recipe in two subshells
-# to avoid problems with "make -n".
-.log.trs:
-	rm -f $< $@
-	$(MAKE) $(AM_MAKEFLAGS) $<
-
-# Leading 'am--fnord' is there to ensure the list of targets does not
-# expand to empty, as could happen e.g. with make check TESTS=''.
-am--fnord $(TEST_LOGS) $(TEST_LOGS:.log=.trs): $(am__force_recheck)
-am--force-recheck:
-	@:
-
-$(TEST_SUITE_LOG): $(TEST_LOGS)
-	@$(am__set_TESTS_bases); \
-	am__f_ok () { test -f "$$1" && test -r "$$1"; }; \
-	redo_bases=`for i in $$bases; do \
-	              am__f_ok $$i.trs && am__f_ok $$i.log || echo $$i; \
-	            done`; \
-	if test -n "$$redo_bases"; then \
-	  redo_logs=`for i in $$redo_bases; do echo $$i.log; done`; \
-	  redo_results=`for i in $$redo_bases; do echo $$i.trs; done`; \
-	  if $(am__make_dryrun); then :; else \
-	    rm -f $$redo_logs && rm -f $$redo_results || exit 1; \
-	  fi; \
-	fi; \
-	if test -n "$$am__remaking_logs"; then \
-	  echo "fatal: making $(TEST_SUITE_LOG): possible infinite" \
-	       "recursion detected" >&2; \
-	else \
-	  am__remaking_logs=yes $(MAKE) $(AM_MAKEFLAGS) $$redo_logs; \
-	fi; \
-	if $(am__make_dryrun); then :; else \
-	  st=0;  \
-	  errmsg="fatal: making $(TEST_SUITE_LOG): failed to create"; \
-	  for i in $$redo_bases; do \
-	    test -f $$i.trs && test -r $$i.trs \
-	      || { echo "$$errmsg $$i.trs" >&2; st=1; }; \
-	    test -f $$i.log && test -r $$i.log \
-	      || { echo "$$errmsg $$i.log" >&2; st=1; }; \
+check-TESTS: $(TESTS)
+	@failed=0; all=0; xfail=0; xpass=0; skip=0; \
+	srcdir=$(srcdir); export srcdir; \
+	list=' $(TESTS) '; \
+	$(am__tty_colors); \
+	if test -n "$$list"; then \
+	  for tst in $$list; do \
+	    if test -f ./$$tst; then dir=./; \
+	    elif test -f $$tst; then dir=; \
+	    else dir="$(srcdir)/"; fi; \
+	    if $(TESTS_ENVIRONMENT) $${dir}$$tst $(AM_TESTS_FD_REDIRECT); then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *[\ \	]$$tst[\ \	]*) \
+		xpass=`expr $$xpass + 1`; \
+		failed=`expr $$failed + 1`; \
+		col=$$red; res=XPASS; \
+	      ;; \
+	      *) \
+		col=$$grn; res=PASS; \
+	      ;; \
+	      esac; \
+	    elif test $$? -ne 77; then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *[\ \	]$$tst[\ \	]*) \
+		xfail=`expr $$xfail + 1`; \
+		col=$$lgn; res=XFAIL; \
+	      ;; \
+	      *) \
+		failed=`expr $$failed + 1`; \
+		col=$$red; res=FAIL; \
+	      ;; \
+	      esac; \
+	    else \
+	      skip=`expr $$skip + 1`; \
+	      col=$$blu; res=SKIP; \
+	    fi; \
+	    echo "$${col}$$res$${std}: $$tst"; \
 	  done; \
-	  test $$st -eq 0 || exit 1; \
-	fi
-	@$(am__sh_e_setup); $(am__tty_colors); $(am__set_TESTS_bases); \
-	ws='[ 	]'; \
-	results=`for b in $$bases; do echo $$b.trs; done`; \
-	test -n "$$results" || results=/dev/null; \
-	all=`  grep "^$$ws*:test-result:"           $$results | wc -l`; \
-	pass=` grep "^$$ws*:test-result:$$ws*PASS"  $$results | wc -l`; \
-	fail=` grep "^$$ws*:test-result:$$ws*FAIL"  $$results | wc -l`; \
-	skip=` grep "^$$ws*:test-result:$$ws*SKIP"  $$results | wc -l`; \
-	xfail=`grep "^$$ws*:test-result:$$ws*XFAIL" $$results | wc -l`; \
-	xpass=`grep "^$$ws*:test-result:$$ws*XPASS" $$results | wc -l`; \
-	error=`grep "^$$ws*:test-result:$$ws*ERROR" $$results | wc -l`; \
-	if test `expr $$fail + $$xpass + $$error` -eq 0; then \
-	  success=true; \
-	else \
-	  success=false; \
-	fi; \
-	br='==================='; br=$$br$$br$$br$$br; \
-	result_count () \
-	{ \
-	    if test x"$$1" = x"--maybe-color"; then \
-	      maybe_colorize=yes; \
-	    elif test x"$$1" = x"--no-color"; then \
-	      maybe_colorize=no; \
+	  if test "$$all" -eq 1; then \
+	    tests="test"; \
+	    All=""; \
+	  else \
+	    tests="tests"; \
+	    All="All "; \
+	  fi; \
+	  if test "$$failed" -eq 0; then \
+	    if test "$$xfail" -eq 0; then \
+	      banner="$$All$$all $$tests passed"; \
 	    else \
-	      echo "$@: invalid 'result_count' usage" >&2; exit 4; \
+	      if test "$$xfail" -eq 1; then failures=failure; else failures=failures; fi; \
+	      banner="$$All$$all $$tests behaved as expected ($$xfail expected $$failures)"; \
 	    fi; \
-	    shift; \
-	    desc=$$1 count=$$2; \
-	    if test $$maybe_colorize = yes && test $$count -gt 0; then \
-	      color_start=$$3 color_end=$$std; \
+	  else \
+	    if test "$$xpass" -eq 0; then \
+	      banner="$$failed of $$all $$tests failed"; \
 	    else \
-	      color_start= color_end=; \
+	      if test "$$xpass" -eq 1; then passes=pass; else passes=passes; fi; \
+	      banner="$$failed of $$all $$tests did not behave as expected ($$xpass unexpected $$passes)"; \
 	    fi; \
-	    echo "$${color_start}# $$desc $$count$${color_end}"; \
-	}; \
-	create_testsuite_report () \
-	{ \
-	  result_count $$1 "TOTAL:" $$all   "$$brg"; \
-	  result_count $$1 "PASS: " $$pass  "$$grn"; \
-	  result_count $$1 "SKIP: " $$skip  "$$blu"; \
-	  result_count $$1 "XFAIL:" $$xfail "$$lgn"; \
-	  result_count $$1 "FAIL: " $$fail  "$$red"; \
-	  result_count $$1 "XPASS:" $$xpass "$$red"; \
-	  result_count $$1 "ERROR:" $$error "$$mgn"; \
-	}; \
-	{								\
-	  echo "$(PACKAGE_STRING): $(subdir)/$(TEST_SUITE_LOG)" |	\
-	    $(am__rst_title);						\
-	  create_testsuite_report --no-color;				\
-	  echo;								\
-	  echo ".. contents:: :depth: 2";				\
-	  echo;								\
-	  for b in $$bases; do echo $$b; done				\
-	    | $(am__create_global_log);					\
-	} >$(TEST_SUITE_LOG).tmp || exit 1;				\
-	mv $(TEST_SUITE_LOG).tmp $(TEST_SUITE_LOG);			\
-	if $$success; then						\
-	  col="$$grn";							\
-	 else								\
-	  col="$$red";							\
-	  test x"$$VERBOSE" = x || cat $(TEST_SUITE_LOG);		\
-	fi;								\
-	echo "$${col}$$br$${std}"; 					\
-	echo "$${col}Testsuite summary for $(PACKAGE_STRING)$${std}";	\
-	echo "$${col}$$br$${std}"; 					\
-	create_testsuite_report --maybe-color;				\
-	echo "$$col$$br$$std";						\
-	if $$success; then :; else					\
-	  echo "$${col}See $(subdir)/$(TEST_SUITE_LOG)$${std}";		\
-	  if test -n "$(PACKAGE_BUGREPORT)"; then			\
-	    echo "$${col}Please report to $(PACKAGE_BUGREPORT)$${std}";	\
-	  fi;								\
-	  echo "$$col$$br$$std";					\
-	fi;								\
-	$$success || exit 1
-
-check-TESTS:
-	@list='$(RECHECK_LOGS)';           test -z "$$list" || rm -f $$list
-	@list='$(RECHECK_LOGS:.log=.trs)'; test -z "$$list" || rm -f $$list
-	@test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
-	@set +e; $(am__set_TESTS_bases); \
-	log_list=`for i in $$bases; do echo $$i.log; done`; \
-	trs_list=`for i in $$bases; do echo $$i.trs; done`; \
-	log_list=`echo $$log_list`; trs_list=`echo $$trs_list`; \
-	$(MAKE) $(AM_MAKEFLAGS) $(TEST_SUITE_LOG) TEST_LOGS="$$log_list"; \
-	exit $$?;
-recheck: all $(check_LTLIBRARIES) $(check_PROGRAMS)
-	@test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
-	@set +e; $(am__set_TESTS_bases); \
-	bases=`for i in $$bases; do echo $$i; done \
-	         | $(am__list_recheck_tests)` || exit 1; \
-	log_list=`for i in $$bases; do echo $$i.log; done`; \
-	log_list=`echo $$log_list`; \
-	$(MAKE) $(AM_MAKEFLAGS) $(TEST_SUITE_LOG) \
-	        am__force_recheck=am--force-recheck \
-	        TEST_LOGS="$$log_list"; \
-	exit $$?
-bin/gearman.log: bin/gearman$(EXEEXT)
-	@p='bin/gearman$(EXEEXT)'; \
-	b='bin/gearman'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-bin/gearadmin.log: bin/gearadmin$(EXEEXT)
-	@p='bin/gearadmin$(EXEEXT)'; \
-	b='bin/gearadmin'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/unittest.log: t/unittest$(EXEEXT)
-	@p='t/unittest$(EXEEXT)'; \
-	b='t/unittest'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/skip.log: t/skip$(EXEEXT)
-	@p='t/skip$(EXEEXT)'; \
-	b='t/skip'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/accept.log: libhostile/t/accept$(EXEEXT)
-	@p='libhostile/t/accept$(EXEEXT)'; \
-	b='libhostile/t/accept'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/hostile_accept.log: libhostile/t/hostile_accept$(EXEEXT)
-	@p='libhostile/t/hostile_accept$(EXEEXT)'; \
-	b='libhostile/t/hostile_accept'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/pipe.log: libhostile/t/pipe$(EXEEXT)
-	@p='libhostile/t/pipe$(EXEEXT)'; \
-	b='libhostile/t/pipe'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/hostile_pipe.log: libhostile/t/hostile_pipe$(EXEEXT)
-	@p='libhostile/t/hostile_pipe$(EXEEXT)'; \
-	b='libhostile/t/hostile_pipe'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/pipe2.log: libhostile/t/pipe2$(EXEEXT)
-	@p='libhostile/t/pipe2$(EXEEXT)'; \
-	b='libhostile/t/pipe2'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/hostile_pipe2.log: libhostile/t/hostile_pipe2$(EXEEXT)
-	@p='libhostile/t/hostile_pipe2$(EXEEXT)'; \
-	b='libhostile/t/hostile_pipe2'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/close.log: libhostile/t/close$(EXEEXT)
-	@p='libhostile/t/close$(EXEEXT)'; \
-	b='libhostile/t/close'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libhostile/t/hostile_close.log: libhostile/t/hostile_close$(EXEEXT)
-	@p='libhostile/t/hostile_close$(EXEEXT)'; \
-	b='libhostile/t/hostile_close'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libgearman-1.0/t/c_test.log: libgearman-1.0/t/c_test$(EXEEXT)
-	@p='libgearman-1.0/t/c_test$(EXEEXT)'; \
-	b='libgearman-1.0/t/c_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-libgearman-1.0/t/cc_test.log: libgearman-1.0/t/cc_test$(EXEEXT)
-	@p='libgearman-1.0/t/cc_test$(EXEEXT)'; \
-	b='libgearman-1.0/t/cc_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/cycle.log: t/cycle$(EXEEXT)
-	@p='t/cycle$(EXEEXT)'; \
-	b='t/cycle'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/vector.log: t/vector$(EXEEXT)
-	@p='t/vector$(EXEEXT)'; \
-	b='t/vector'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/result.log: t/result$(EXEEXT)
-	@p='t/result$(EXEEXT)'; \
-	b='t/result'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/cli.log: t/cli$(EXEEXT)
-	@p='t/cli$(EXEEXT)'; \
-	b='t/cli'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/gearmand.log: t/gearmand$(EXEEXT)
-	@p='t/gearmand$(EXEEXT)'; \
-	b='t/gearmand'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/client.log: t/client$(EXEEXT)
-	@p='t/client$(EXEEXT)'; \
-	b='t/client'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/multi_client.log: t/multi_client$(EXEEXT)
-	@p='t/multi_client$(EXEEXT)'; \
-	b='t/multi_client'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/internals.log: t/internals$(EXEEXT)
-	@p='t/internals$(EXEEXT)'; \
-	b='t/internals'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/worker.log: t/worker$(EXEEXT)
-	@p='t/worker$(EXEEXT)'; \
-	b='t/worker'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/1077917.log: t/1077917$(EXEEXT)
-	@p='t/1077917$(EXEEXT)'; \
-	b='t/1077917'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/hostile_gearmand.log: t/hostile_gearmand$(EXEEXT)
-	@p='t/hostile_gearmand$(EXEEXT)'; \
-	b='t/hostile_gearmand'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/protocol.log: t/protocol$(EXEEXT)
-	@p='t/protocol$(EXEEXT)'; \
-	b='t/protocol'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/round_robin.log: t/round_robin$(EXEEXT)
-	@p='t/round_robin$(EXEEXT)'; \
-	b='t/round_robin'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/cpp.log: t/cpp$(EXEEXT)
-	@p='t/cpp$(EXEEXT)'; \
-	b='t/cpp'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/c.log: t/c$(EXEEXT)
-	@p='t/c$(EXEEXT)'; \
-	b='t/c'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/ephemeral.log: t/ephemeral$(EXEEXT)
-	@p='t/ephemeral$(EXEEXT)'; \
-	b='t/ephemeral'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/drizzle.log: t/drizzle$(EXEEXT)
-	@p='t/drizzle$(EXEEXT)'; \
-	b='t/drizzle'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/memcached.log: t/memcached$(EXEEXT)
-	@p='t/memcached$(EXEEXT)'; \
-	b='t/memcached'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/postgres.log: t/postgres$(EXEEXT)
-	@p='t/postgres$(EXEEXT)'; \
-	b='t/postgres'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/mysql.log: t/mysql$(EXEEXT)
-	@p='t/mysql$(EXEEXT)'; \
-	b='t/mysql'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/sqlite.log: t/sqlite$(EXEEXT)
-	@p='t/sqlite$(EXEEXT)'; \
-	b='t/sqlite'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-t/tokyocabinet.log: t/tokyocabinet$(EXEEXT)
-	@p='t/tokyocabinet$(EXEEXT)'; \
-	b='t/tokyocabinet'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-.test.log:
-	@p='$<'; \
-	$(am__set_b); \
-	$(am__check_pre) $(TEST_LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_TEST_LOG_DRIVER_FLAGS) $(TEST_LOG_DRIVER_FLAGS) -- $(TEST_LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-@am__EXEEXT_TRUE@.test$(EXEEXT).log:
-@am__EXEEXT_TRUE@	@p='$<'; \
-@am__EXEEXT_TRUE@	$(am__set_b); \
-@am__EXEEXT_TRUE@	$(am__check_pre) $(TEST_LOG_DRIVER) --test-name "$$f" \
-@am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
-@am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_TEST_LOG_DRIVER_FLAGS) $(TEST_LOG_DRIVER_FLAGS) -- $(TEST_LOG_COMPILE) \
-@am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
+	  fi; \
+	  dashes="$$banner"; \
+	  skipped=""; \
+	  if test "$$skip" -ne 0; then \
+	    if test "$$skip" -eq 1; then \
+	      skipped="($$skip test was not run)"; \
+	    else \
+	      skipped="($$skip tests were not run)"; \
+	    fi; \
+	    test `echo "$$skipped" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$skipped"; \
+	  fi; \
+	  report=""; \
+	  if test "$$failed" -ne 0 && test -n "$(PACKAGE_BUGREPORT)"; then \
+	    report="Please report to $(PACKAGE_BUGREPORT)"; \
+	    test `echo "$$report" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$report"; \
+	  fi; \
+	  dashes=`echo "$$dashes" | sed s/./=/g`; \
+	  if test "$$failed" -eq 0; then \
+	    col="$$grn"; \
+	  else \
+	    col="$$red"; \
+	  fi; \
+	  echo "$${col}$$dashes$${std}"; \
+	  echo "$${col}$$banner$${std}"; \
+	  test -z "$$skipped" || echo "$${col}$$skipped$${std}"; \
+	  test -z "$$report" || echo "$${col}$$report$${std}"; \
+	  echo "$${col}$$dashes$${std}"; \
+	  test "$$failed" -eq 0; \
+	else :; fi
 
 distdir: $(DISTFILES)
 	$(am__remove_distdir)
@@ -8928,6 +8346,31 @@ distdir: $(DISTFILES)
 	    test -f "$(distdir)/$$file" \
 	    || cp -p $$d/$$file "$(distdir)/$$file" \
 	    || exit 1; \
+	  fi; \
+	done
+	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    $(am__make_dryrun) \
+	      || test -d "$(distdir)/$$subdir" \
+	      || $(MKDIR_P) "$(distdir)/$$subdir" \
+	      || exit 1; \
+	    dir1=$$subdir; dir2="$(distdir)/$$subdir"; \
+	    $(am__relativize); \
+	    new_distdir=$$reldir; \
+	    dir1=$$subdir; dir2="$(top_distdir)"; \
+	    $(am__relativize); \
+	    new_top_distdir=$$reldir; \
+	    echo " (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) top_distdir="$$new_top_distdir" distdir="$$new_distdir" \\"; \
+	    echo "     am__remove_distdir=: am__skip_length_check=: am__skip_mode_fix=: distdir)"; \
+	    ($(am__cd) $$subdir && \
+	      $(MAKE) $(AM_MAKEFLAGS) \
+	        top_distdir="$$new_top_distdir" \
+	        distdir="$$new_distdir" \
+		am__remove_distdir=: \
+		am__skip_length_check=: \
+		am__skip_mode_fix=: \
+	        distdir) \
+	      || exit 1; \
 	  fi; \
 	done
 	-test -n "$(am__skip_mode_fix)" \
@@ -9058,25 +8501,26 @@ check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_LTLIBRARIES) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS check-local
 check: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) check-am
-all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(MANS) $(DATA) $(HEADERS) \
+	$(MAKE) $(AM_MAKEFLAGS) check-recursive
+all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(DATA) $(HEADERS) \
 		gear_config.h
 install-binPROGRAMS: install-libLTLIBRARIES
 
-installdirs:
-	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man3dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(includedir)"; do \
+installdirs: installdirs-recursive
+installdirs-am:
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) install-am
-install-exec: install-exec-am
-install-data: install-data-am
-uninstall: uninstall-am
+	$(MAKE) $(AM_MAKEFLAGS) install-recursive
+install-exec: install-exec-recursive
+install-data: install-data-recursive
+uninstall: uninstall-recursive
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-am
+installcheck: installcheck-recursive
 install-strip:
 	if test -z '$(STRIP)'; then \
 	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
@@ -9088,9 +8532,6 @@ install-strip:
 	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
 	fi
 mostlyclean-generic:
-	-test -z "$(TEST_LOGS)" || rm -f $(TEST_LOGS)
-	-test -z "$(TEST_LOGS:.log=.trs)" || rm -f $(TEST_LOGS:.log=.trs)
-	-test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
 
 clean-generic:
 	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
@@ -9174,63 +8615,62 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
-clean: clean-am
+clean: clean-recursive
 
 clean-am: clean-binPROGRAMS clean-checkLTLIBRARIES clean-checkPROGRAMS \
 	clean-generic clean-libLTLIBRARIES clean-libtool clean-local \
 	clean-noinstLTLIBRARIES clean-noinstPROGRAMS \
 	clean-sbinPROGRAMS mostlyclean-am
 
-distclean: distclean-am
+distclean: distclean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/$(DEPDIR) libgearman-server/plugins/protocol/gear/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/$(DEPDIR) libgearman-server/plugins/queue/default/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhashkit/$(DEPDIR) libhostile/$(DEPDIR) libhostile/t/$(DEPDIR) libtest/$(DEPDIR) libtest/exception/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) tests/workers/aggregator/$(DEPDIR) tests/workers/v1/$(DEPDIR) tests/workers/v2/$(DEPDIR) util/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags
 
-dvi: dvi-am
+dvi: dvi-recursive
 
 dvi-am:
 
-html: html-am
+html: html-recursive
 
-html-am: html-local
+html-am:
 
-info: info-am
+info: info-recursive
 
 info-am:
 
-install-data-am: install-man install-nobase_includeHEADERS \
-	install-pkgconfigDATA
+install-data-am: install-nobase_includeHEADERS install-pkgconfigDATA
 
-install-dvi: install-dvi-am
+install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
 install-exec-am: install-binPROGRAMS install-libLTLIBRARIES \
 	install-sbinPROGRAMS
 
-install-html: install-html-am
+install-html: install-html-recursive
 
-install-html-am: install-html-local
+install-html-am:
 
-install-info: install-info-am
+install-info: install-info-recursive
 
 install-info-am:
 
-install-man: install-man1 install-man3 install-man8
+install-man:
 
-install-pdf: install-pdf-am
+install-pdf: install-pdf-recursive
 
 install-pdf-am:
 
-install-ps: install-ps-am
+install-ps: install-ps-recursive
 
 install-ps-am:
 
 installcheck-am:
 
-maintainer-clean: maintainer-clean-am
+maintainer-clean: maintainer-clean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
 	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/$(DEPDIR) libgearman-server/plugins/protocol/gear/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/$(DEPDIR) libgearman-server/plugins/queue/default/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhashkit/$(DEPDIR) libhostile/$(DEPDIR) libhostile/t/$(DEPDIR) libtest/$(DEPDIR) libtest/exception/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) tests/workers/aggregator/$(DEPDIR) tests/workers/v1/$(DEPDIR) tests/workers/v2/$(DEPDIR) util/$(DEPDIR)
@@ -9238,52 +8678,49 @@ maintainer-clean: maintainer-clean-am
 maintainer-clean-am: distclean-am maintainer-clean-generic \
 	maintainer-clean-local
 
-mostlyclean: mostlyclean-am
+mostlyclean: mostlyclean-recursive
 
 mostlyclean-am: mostlyclean-compile mostlyclean-generic \
 	mostlyclean-libtool
 
-pdf: pdf-am
+pdf: pdf-recursive
 
 pdf-am:
 
-ps: ps-am
+ps: ps-recursive
 
 ps-am:
 
 uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
-	uninstall-man uninstall-nobase_includeHEADERS \
-	uninstall-pkgconfigDATA uninstall-sbinPROGRAMS
+	uninstall-nobase_includeHEADERS uninstall-pkgconfigDATA \
+	uninstall-sbinPROGRAMS
 
-uninstall-man: uninstall-man1 uninstall-man3 uninstall-man8
+.MAKE: $(am__recursive_targets) all check check-am install install-am \
+	install-strip
 
-.MAKE: all check check-am install install-am install-strip
-
-.PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-TESTS \
-	check-am check-local clean clean-binPROGRAMS \
-	clean-checkLTLIBRARIES clean-checkPROGRAMS clean-cscope \
-	clean-generic clean-libLTLIBRARIES clean-libtool clean-local \
-	clean-noinstLTLIBRARIES clean-noinstPROGRAMS \
+.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
+	am--refresh check check-TESTS check-am check-local clean \
+	clean-binPROGRAMS clean-checkLTLIBRARIES clean-checkPROGRAMS \
+	clean-cscope clean-generic clean-libLTLIBRARIES clean-libtool \
+	clean-local clean-noinstLTLIBRARIES clean-noinstPROGRAMS \
 	clean-sbinPROGRAMS cscope cscopelist-am ctags ctags-am dist \
 	dist-all dist-bzip2 dist-gzip dist-lzip dist-shar dist-tarZ \
 	dist-xz dist-zip distcheck distclean distclean-compile \
 	distclean-generic distclean-hdr distclean-libtool \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
-	dvi-am html html-am html-local info info-am install install-am \
+	dvi-am html html-am info info-am install install-am \
 	install-binPROGRAMS install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-html-local install-info \
-	install-info-am install-libLTLIBRARIES install-man \
-	install-man1 install-man3 install-man8 \
+	install-html-am install-info install-info-am \
+	install-libLTLIBRARIES install-man \
 	install-nobase_includeHEADERS install-pdf install-pdf-am \
 	install-pkgconfigDATA install-ps install-ps-am \
 	install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	installcheck-am installdirs installdirs-am maintainer-clean \
 	maintainer-clean-generic maintainer-clean-local mostlyclean \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am recheck tags tags-am uninstall \
-	uninstall-am uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
-	uninstall-man uninstall-man1 uninstall-man3 uninstall-man8 \
+	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am \
+	uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 	uninstall-nobase_includeHEADERS uninstall-pkgconfigDATA \
 	uninstall-sbinPROGRAMS
 
@@ -9715,78 +9152,6 @@ valgrind-httpd: t/httpd gearmand/gearmand
 
 bogus:
 
-.PHONY: clean-docs-check
-clean-docs-check:
-	-rm -rf docs/_build docs/doctrees man/.doctrees
-
-.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest
-
-man: docs/conf.py
-	@PYTHONPATH=$(SPHINX_BUILDDIR)/docs  $(SPHINXBUILD) -b man $(ALLSPHINXOPTS) ${top_builddir}/man
-
-install-html-local: html-local
-	@$(MKDIR_P)  $(htmldir)/html
-	@cp -r ${top_builddir}/html $(htmldir)/
-
-html-local: docs/conf.py
-	@PYTHONPATH=${top_srcdir}/docs $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) ${top_builddir}/html
-
-singlehtml: html-local
-	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/singlehtml
-
-pickle: docs/conf.py
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/pickle
-	@echo
-	@echo "Build finished; now you can process the pickle files."
-
-json: docs/conf.py
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b json $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/json
-	@echo
-	@echo "Build finished; now you can process the JSON files."
-
-htmlhelp: docs/conf.py
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/htmlhelp
-	@echo
-	@echo "Build finished; now you can run HTML Help Workshop with the" \
-	      ".hhp project file in $(SPHINX_BUILDDIR)/htmlhelp."
-
-epub: docs/conf.py
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/epub
-	@echo
-	@echo "Build finished. The epub file is in $(SPHINX_BUILDDIR)/epub."
-
-latex: docs/conf.py
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/latex
-	@echo
-	@echo "Build finished; the LaTeX files are in $(SPHINX_BUILDDIR)/latex."
-	@echo "Run \`make' in that directory to run these through (pdf)latex" \
-	      "(use \`make latexpdf' here to do that automatically)."
-
-latexpdf: latex
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/latex
-	@echo "Running LaTeX files through pdflatex..."
-	make -C $(SPHINX_BUILDDIR)/latex all-pdf
-	@echo "pdflatex finished; the PDF files are in $(SPHINX_BUILDDIR)/latex."
-
-text: docs/conf.py
-	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/text
-
-changes: docs/conf.py
-	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/changes
-
-linkcheck: docs/conf.py
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/linkcheck
-
-doctest: docs/conf.py
-	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/doctest
-	@echo "Testing of doctests in the sources finished, look at the " \
-	      "results in $(SPHINX_BUILDDIR)/doctest/output.txt."
-
-# Build rule for documentation
-$(dist_man_MANS): $(top_srcdir)/configure.ac
-	$(MAKE) $(AM_MAKEFLAGS) man
-.NOTPARALLEL: man
-
 test: check
 configmake.h: Makefile
 	@rm -f $@-t $@
@@ -9807,7 +9172,7 @@ configmake.h: Makefile
 	  mv $@-t $@ ; \
 	  fi
 
-clean-local: clean-libtest-check clean-docs-check
+clean-local: clean-libtest-check
 
 maintainer-clean-local:
 	find . -type f -name '*~' -exec rm -f '{}' \;

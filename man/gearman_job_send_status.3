@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "GEARMAN_JOB_SEND_STATUS" "3" "July 29, 2013" "1.1.8" "Gearmand"
+.TH "GEARMAN_JOB_SEND_STATUS" "3" "October 03, 2013" "1.1.11" "Gearmand"
 .SH NAME
 gearman_job_send_status \- Gearmand Documentation, http://gearman.info/
 .
@@ -118,7 +118,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \fI\%gearman_job_st\fP *gearman_worker_grab_job(gearman_worker_st\fI\ *worker\fP, \fI\%gearman_job_st\fP\fI\ *job\fP, gearman_return_t\fI\ *ret_ptr\fP)
+.B gearman_client_st *gearman_job_use_client(\fI\%gearman_job_st\fP\fI\ *job\fP)
 .UNINDENT
 .sp
 Link with \-lgearman
@@ -136,11 +136,12 @@ job was set to execute against.
 .sp
 \fI\%gearman_job_unique()\fP return the unique value that was used for \fI\%gearman_job_st\fP\&.
 .sp
-returns the \fI\%gearman_job_st\fP workload. The size of it can be determined with \fI\%gearman_job_workload_size()\fP\&.
+gearman_job_take_workload returns the \fI\%gearman_job_st\fP workload. The size of it can be determined with \fI\%gearman_job_workload_size()\fP\&.
 \fI\%gearman_job_take_workload()\fP is the same as \fI\%gearman_job_workload()\fP with the exception that the result must be
 \fIfree(3)\fP by the caller.
 .sp
-\fI\%gearman_worker_grab_job()\fP Takes a job from one of the job servers. It is the responsibility of the caller to free the job once they are done. This interface is used in testing, and is very rarely the correct interface to program against.
+gearman_job_use_client returns a \fBgearman_client_st\fP configured from gearman_job_st. The gearman_client_st can be used to communicate client API commands to the server.
+You do not, and should not, call \fBgearman_client_free()\fP on the gearman_client_st. It is cleaned up when job is cleaned up.
 .SH RETURN VALUE
 .sp
 A value of \fBgearman_return_t\fP  is returned.  On success that value

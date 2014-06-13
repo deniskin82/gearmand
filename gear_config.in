@@ -250,6 +250,9 @@
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
 #undef HAVE_NETINET_TCP_H
 
+/* Enable OPENSSL Support */
+#undef HAVE_OPENSSL
+
 /* Define to 1 if you have O_CLOEXEC defined */
 #undef HAVE_O_CLOEXEC
 
@@ -300,6 +303,9 @@
 
 /* Have the SQLITE3 library */
 #undef HAVE_SQLITE3
+
+/* Enable SSL Support */
+#undef HAVE_SSL
 
 /* Define to 1 if you have the <stdarg.h> header file. */
 #undef HAVE_STDARG_H

@@ -587,7 +587,7 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
   for (uint32_t x= 0; x < gearmand->_port_list.size(); ++x)
   {
     struct addrinfo hints;
-    struct addrinfo *addrinfo;
+    struct addrinfo *addrinfo= NULL;
 
     gearmand_port_st *port= &gearmand->_port_list[x];
 
@@ -605,6 +605,11 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
         if (length <= 0 or size_t(length) >= sizeof(buffer))
         {
           buffer[0]= 0;
+        }
+
+        if (addrinfo)
+        {
+          freeaddrinfo(addrinfo);
         }
         return gearmand_gai_error(buffer, ret);
       }
@@ -662,6 +667,7 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
           if (gearmand_failed(socket_ret= set_socket(gearmand, fd, addrinfo_next)))
           {
             gearmand_sockfd_close(fd);
+            freeaddrinfo(addrinfo);
             return socket_ret;
           }
         }
@@ -678,11 +684,13 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
         
         if (waited >= bind_timeout)
         {
+          freeaddrinfo(addrinfo);
           return gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "Timeout occured when calling bind() for %s:%s", host, port->port);
         }
 
         if (ret != EADDRINUSE)
         {
+          freeaddrinfo(addrinfo);
           return gearmand_perror(ret, "bind");
         }
 
@@ -706,6 +714,7 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
 
         gearmand_sockfd_close(fd);
 
+        freeaddrinfo(addrinfo);
         return GEARMAND_ERRNO;
       }
 
@@ -718,6 +727,7 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
 
           gearmand_sockfd_close(fd);
 
+          freeaddrinfo(addrinfo);
           return GEARMAND_ERRNO;
         }
 
@@ -1055,14 +1065,13 @@ static void _wakeup_event(int fd, short, void *arg)
 
 static gearmand_error_t _watch_events(gearmand_st *gearmand)
 {
-  gearmand_error_t ret= _listen_watch(gearmand);
-  if (ret != GEARMAND_SUCCESS)
+  gearmand_error_t ret;
+  if (gearmand_failed(ret= _listen_watch(gearmand)))
   {
     return ret;
   }
 
-  ret= _wakeup_watch(gearmand);
-  if (ret != GEARMAND_SUCCESS)
+  if (gearmand_failed(ret= _wakeup_watch(gearmand)))
   {
     return ret;
   }

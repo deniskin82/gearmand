@@ -36,9 +36,12 @@
 
 #pragma once
 
-#if defined(HAVE_CYASSL) && HAVE_CYASSL
-# include <cyassl/ssl.h>
-#endif
+#include "libgearman/ssl.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wunused-private-field"
 
 namespace libtest {
 
@@ -103,9 +106,10 @@ private:
   const char* _error_file;
   int _error_line;
   int requested_message;
-  struct CYASSL_CTX* _ctx_ssl;
-  struct CYASSL* _ssl;
+  SSL_CTX* _ctx_ssl;
+  SSL* _ssl;
   struct addrinfo *_ai;
 };
 
 } // namespace libtest
+#pragma GCC diagnostic pop

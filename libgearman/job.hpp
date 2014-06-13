@@ -43,6 +43,7 @@ class Job
 {
 public:
   Job(gearman_job_st* shell_, Worker& worker_);
+  ~Job();
 
   gearman_job_st* shell()
   {
@@ -72,6 +73,7 @@ public:
   }
 
   Worker& _worker;
+  gearman_client_st* _client;
   Job *next;
   Job *prev;
   gearman_connection_st *con;
@@ -84,6 +86,8 @@ public:
   {
     return _worker.universal;
   }
+
+  gearman_client_st* client();
 
   gearman_universal_st& universal() const
   {
